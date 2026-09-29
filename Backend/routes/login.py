@@ -71,12 +71,13 @@ def dashboard():
     else:
         points = 0
         history = []
-        
+        catalog = []
+
         try:
             conn = get_db_connection()
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT d.driver_id, d.points 
+                    SELECT d.driver_id, d.points, d.sponsor_id
                     FROM DriverUser d
                     JOIN UserAccount u ON d.user_id = u.user_id
                     WHERE u.username = %s
@@ -99,13 +100,22 @@ def dashboard():
                         ORDER BY p.datetime DESC
                     """, (driver['driver_id'],))
                     history = cur.fetchall()
+
+                    # Only the driver's own sponsor's products, so points can't be spent on another sponsor's catalog
+                    cur.execute("""
+                        SELECT product_name, description, point_cost, Availability AS available
+                        FROM ProductCatalog
+                        WHERE sponsor_id = %s
+                        ORDER BY product_name
+                    """, (driver['sponsor_id'],))
+                    catalog = cur.fetchall()
         except Exception as e:
             print(f"Database error: {e}")
         finally:
             if 'conn' in locals() and conn.open:
                 conn.close()
 
-        return render_template('driver_dashboard.html', points=points, history=history)
+        return render_template('driver_dashboard.html', points=points, history=history, catalog=catalog)
 
 @auth_bp.route('/profile')
 def profile():

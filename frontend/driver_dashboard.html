@@ -45,6 +45,39 @@
           {% endif %}
         </tbody>
       </table>
+
+      <!-- Sponsor catalog: only products from the driver's own sponsor are listed -->
+      <h2>My Sponsor's Catalog</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price (points)</th>
+            <th>Availability</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if catalog %}
+            {% for item in catalog %}
+            <tr>
+              <td>{{ item.product_name }}</td>
+              <td>{{ item.point_cost }}</td>
+              <td>
+                {% if item.available %}
+                  <span class="status in-stock">In Stock</span>
+                {% else %}
+                  <span class="status out-of-stock">Out of Stock</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="3" class="catalog-empty">Your sponsor hasn't added any products yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </main>
   </div>
 </body>
