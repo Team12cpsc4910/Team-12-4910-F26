@@ -1,9 +1,11 @@
 CREATE TABLE UserAccount ( 
-  user_id INT PRIMARY KEY,
+  user_id INT NOT NULL AUTO_INCREMENT,
   username VARCHAR(50) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   user_type VARCHAR(20) NOT NULL,
   failed_logins INT NOT NULL DEFAULT 0,
-  account_locked BOOLEAN NOT NULL DEFAULT FALSE
+  account_locked BOOLEAN NOT NULL DEFAULT FALSE,
+
+  PRIMARY KEY (user_id)
 );

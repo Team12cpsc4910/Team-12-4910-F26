@@ -5,7 +5,7 @@ CREATE TABLE PointChangeLog (
     sponsor_user_id INT NULL,
     points_change INT NOT NULL,
     reason VARCHAR(255) NOT NULL,
-    datetime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [datetime] DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (point_log_id),
     FOREIGN KEY (driver_id)REFERENCES DriverUser(driver_id),
