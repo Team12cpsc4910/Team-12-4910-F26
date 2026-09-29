@@ -58,4 +58,14 @@ BEGIN
     END IF;
 END//
 
+--RESET LOCKED STATUS AND LOGIN ATTEMPTS
+CREATE TRIGGER password_reset
+AFTER INSERT ON PasswordChangeLog
+FOR EACH ROW
+BEGIN
+    UPDATE UserAccount
+    SET locked = FALSE, login_attempts = 0
+    WHERE user_id = NEW.user_id;
+END//
+
 DELIMITER ;
