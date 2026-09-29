@@ -24,7 +24,7 @@ def login():
         return "Invalid credentials. Please press back and try again."
 
 # Driver Point Report: finds the logged-in sponsor user's company, then returns every
-# point change for that company's drivers, including each driver's name.
+# point change for that company's drivers, including each driver's name and who made the change.
 def get_sponsor_point_report(username):
     report = []
     conn = None
@@ -41,9 +41,11 @@ def get_sponsor_point_report(username):
 
             if sponsor:
                 cur.execute("""
-                    SELECT d.first_name, d.last_name, p.datetime, p.points_change, p.reason
+                    SELECT d.first_name, d.last_name, p.datetime, p.points_change, p.reason,
+                           COALESCE(CONCAT(su.first_name, ' ', su.last_name), 'Unknown') AS changed_by
                     FROM PointChangeLog p
                     JOIN DriverUser d ON p.driver_id = d.driver_id
+                    LEFT JOIN SponsorUser su ON p.sponsor_user_id = su.sponsor_user_id
                     WHERE d.sponsor_id = %s
                     ORDER BY p.datetime DESC
                 """, (sponsor['sponsor_id'],))
@@ -84,11 +86,15 @@ def dashboard():
                 if driver:
                     points = driver['points']
                     
+                    # Sponsor column shows the sponsor user who made the change,
+                    # falling back to the driver's sponsor company for rows without one
                     cur.execute("""
-                        SELECT p.datetime, p.points_change, p.reason, s.sponsor_name
+                        SELECT p.datetime, p.points_change, p.reason,
+                               COALESCE(CONCAT(su.first_name, ' ', su.last_name), s.sponsor_name) AS sponsor_name
                         FROM PointChangeLog p
                         JOIN DriverUser d ON p.driver_id = d.driver_id
                         JOIN Sponsor s ON d.sponsor_id = s.sponsor_id
+                        LEFT JOIN SponsorUser su ON p.sponsor_user_id = su.sponsor_user_id
                         WHERE p.driver_id = %s
                         ORDER BY p.datetime DESC
                     """, (driver['driver_id'],))

@@ -40,6 +40,7 @@
             <th>Driver</th>
             <th>Date</th>
             <th>Change</th>
+            <th>Changed By</th>
             <th>Reason</th>
           </tr>
         </thead>
@@ -50,12 +51,13 @@
               <td>{{ row.first_name }} {{ row.last_name }}</td>
               <td>{{ row.datetime }}</td>
               <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td>{{ row.changed_by }}</td>
               <td>{{ row.reason }}</td>
             </tr>
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="4" class="catalog-empty">No point changes for your drivers yet.</td>
+              <td colspan="5" class="catalog-empty">No point changes for your drivers yet.</td>
             </tr>
           {% endif %}
         </tbody>
