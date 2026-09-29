@@ -2,7 +2,7 @@ CREATE TABLE DriverUser (
     driver_id INT NOT NULL AUTO_INCREMENT,
     user_id INT NOT NULL,
     sponsor_id INT NOT NULL,
-    points INT NOT NULL DEFAULT 0,
+    points INT NOT NULL DEFAULT 0 CHECK (points >= 0),
     application_status VARCHAR(20) NOT NULL DEFAULT 'Pending',
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
