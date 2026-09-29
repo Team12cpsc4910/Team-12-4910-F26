@@ -23,6 +23,38 @@ def login():
     else:
         return "Invalid credentials. Please press back and try again."
 
+# Driver Point Report: finds the logged-in sponsor user's company, then returns every
+# point change for that company's drivers, including each driver's name.
+def get_sponsor_point_report(username):
+    report = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT su.sponsor_id
+                FROM SponsorUser su
+                JOIN UserAccount u ON su.user_id = u.user_id
+                WHERE u.username = %s
+            """, (username,))
+            sponsor = cur.fetchone()
+
+            if sponsor:
+                cur.execute("""
+                    SELECT d.first_name, d.last_name, p.datetime, p.points_change, p.reason
+                    FROM PointChangeLog p
+                    JOIN DriverUser d ON p.driver_id = d.driver_id
+                    WHERE d.sponsor_id = %s
+                    ORDER BY p.datetime DESC
+                """, (sponsor['sponsor_id'],))
+                report = cur.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+    return report
+
 @auth_bp.route('/dashboard')
 def dashboard():
     if 'username' not in session:
@@ -33,7 +65,7 @@ def dashboard():
     if current_user == "admin":
         return render_template('admin_dashboard.html')
     elif current_user == "sponsor":
-        return render_template('sponsor_dashboard.html')
+        return render_template('sponsor_dashboard.html', report=get_sponsor_point_report(current_user))
     else:
         points = 0
         history = []

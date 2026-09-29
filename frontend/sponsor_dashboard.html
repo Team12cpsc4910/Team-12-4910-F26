@@ -44,9 +44,20 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td colspan="4" class="catalog-empty">Point report will appear here once connected to your account.</td>
-          </tr>
+          {% if report %}
+            {% for row in report %}
+            <tr>
+              <td>{{ row.first_name }} {{ row.last_name }}</td>
+              <td>{{ row.datetime }}</td>
+              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td>{{ row.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No point changes for your drivers yet.</td>
+            </tr>
+          {% endif %}
         </tbody>
       </table>
     </main>
