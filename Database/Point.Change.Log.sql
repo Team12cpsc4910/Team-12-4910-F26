@@ -1,7 +1,6 @@
 CREATE TABLE PointChangeLog (
     point_log_id BIGINT NOT NULL AUTO_INCREMENT,
     driver_id INT NOT NULL,
-    -- Sponsor user who made the change; NULL for older rows or changes not made by a sponsor user
     sponsor_user_id INT NULL,
     points_change INT NOT NULL,
     reason VARCHAR(255) NOT NULL,
