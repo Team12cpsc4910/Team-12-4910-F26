@@ -124,10 +124,8 @@ def dashboard():
                     """, (driver['driver_id'],))
                     history = cur.fetchall()
 
-                    # Catalog stays hidden until the sponsor approves the driver's application
                     approved = driver['application_status'] == 'Approved'
                     if approved:
-                        # Only the driver's own sponsor's products, so points can't be spent on another sponsor's catalog
                         cur.execute("""
                             SELECT product_name, description, point_cost, Availability AS available
                             FROM ProductCatalog
@@ -143,20 +141,44 @@ def dashboard():
 
         return render_template('driver_dashboard.html', points=points, history=history, catalog=catalog, approved=approved)
 
-@auth_bp.route('/profile')
+@auth_bp.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'username' not in session:
-        return render_template('index.html') 
+        return redirect('/') 
     
     current_user = session['username']
     
-    mock_user_data = {
-        "username": current_user,
-        "email": f"{current_user}@example.com",
-        "user_type": current_user.capitalize()
-    }
+    if current_user in ["admin", "driver", "sponsor"]:
+        mock_user_data = {
+            "username": current_user,
+            "email": f"{current_user}@example.com",
+            "user_type": current_user.capitalize()
+        }
+        return render_template('profile.html', user=mock_user_data)
+        
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if request.method == 'POST':
+                new_email = request.form.get('email')
+                if new_email:
+                    cur.execute("""
+                        UPDATE UserAccount 
+                        SET email = %s 
+                        WHERE username = %s
+                    """, (new_email, current_user))
+                    conn.commit()
+            
+            cur.execute("""
+                SELECT username, email, user_type 
+                FROM UserAccount 
+                WHERE username = %s
+            """, (current_user,))
+            user = cur.fetchone()
+    finally:
+        conn.close()
     
-    return render_template('profile.html', user=mock_user_data)
+    return render_template('profile.html', user=user)
 
 @auth_bp.route('/logout')
 def logout():
