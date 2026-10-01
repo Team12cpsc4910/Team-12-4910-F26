@@ -11,8 +11,6 @@ app = Flask(__name__, template_folder='../frontend', static_folder='../frontend'
 
 app.secret_key = 'cookiecheesecake'
 
-if len(app.secret_key) < 32:
-    raise RuntimeError('FLASK_SECRET_KEY must contain at least 32 random characters.')
 app.config.update(
     SESSION_COOKIE_SECURE=os.getenv('COOKIE_SECURE', 'true').lower() == 'true',
     SESSION_COOKIE_HTTPONLY=True,
