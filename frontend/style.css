@@ -1,46 +1,57 @@
+/* General Page Styling */
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  line-height: 1.5;
-  color: #333;
-  background-color: #f9f9f9; 
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  color: #334155;
+  background-color: #f1f5f9; /* Softer, cool-gray background */
   margin: 0;
   padding: 20px;
 }
 
+/* Main Content Card */
 .container {
-  max-width: 700px; 
+  max-width: 750px; 
   margin: 40px auto;
-  background-color: #fff;
-  padding: 30px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); /* Soft shadow instead of a hard border */
 }
 
+/* Navigation Menu */
 nav {
-  text-align: center;
-  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 nav a {
-  margin: 0 15px;
   text-decoration: none;
-  color: #0056b3;
-  font-weight: bold;
+  color: #2563eb; /* Vibrant modern blue */
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 nav a:hover {
-  text-decoration: underline;
+  background-color: #eff6ff; /* Light blue highlight on hover */
+  color: #1d4ed8;
 }
 
-h1 {
+/* Typography */
+h1, h2 {
   text-align: center;
+  color: #0f172a;
 }
 
 dt {
-  font-weight: bold;
+  font-weight: 600;
   margin-top: 15px;
+  color: #1e293b;
 }
 
 dd {
@@ -48,81 +59,122 @@ dd {
   margin-bottom: 15px;
 }
 
-/* Login Form Styles */
+/* Form Styles */
 .login-form {
-  max-width: 300px;
+  max-width: 320px;
   margin: 30px auto 0 auto; 
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9em;
 }
 
-.form-group input {
+.form-group input, 
+.form-group select {
   width: 100%;
-  padding: 8px;
+  padding: 10px 12px;
   box-sizing: border-box; 
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1em;
+  transition: border-color 0.2s ease;
 }
 
+.form-group input:focus, 
+.form-group select:focus {
+  outline: none;
+  border-color: #2563eb; /* Highlights blue when typing */
+}
+
+/* Buttons */
 button {
   width: 100%;
-  padding: 10px;
-  background-color: #0056b3;
-  color: white;
+  padding: 12px;
+  background-color: #2563eb;
+  color: #ffffff;
   border: none;
-  border-radius: 4px;
-  font-weight: bold;
+  border-radius: 6px;
+  font-size: 1em;
+  font-weight: 600;
   cursor: pointer;
   margin-top: 10px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 button:hover {
-  background-color: #004494;
+  background-color: #1d4ed8;
 }
 
-/* Product Catalog Styles */
+button:active {
+  transform: scale(0.98); /* Satisfying "click" press effect */
+}
+
+/* Table Styles */
 .catalog-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 15px;
+  margin-top: 20px;
+}
+
+.catalog-table th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .catalog-table th,
 .catalog-table td {
   text-align: left;
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
+/* Status Badges */
 .status {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
   font-size: 0.85em;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .status.in-stock {
-  background-color: #d4edda;
-  color: #155724;
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .status.out-of-stock {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.status.pending {
+  background-color: #fef9c3;
+  color: #854d0e;
 }
 
 .catalog-empty {
   text-align: center;
-  color: #777;
+  color: #64748b;
   font-style: italic;
-  padding: 20px 10px;
+  padding: 30px 10px;
+}
+
+.error-message {
+  max-width: 300px;
+  margin: 15px auto;
+  padding: 12px;
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
 }

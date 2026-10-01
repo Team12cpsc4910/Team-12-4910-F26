@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Account - Good Driver Incentive Program</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+  <div class="container">
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="https://team12-backend-api.duckdns.org/about">About</a>
+    </nav>
+
+    <main>
+      <h1>Create Driver Account</h1>
+
+      {% if success %}
+
+        <p style="text-align: center;">
+          Account created successfully!
+        </p>
+
+        <p style="text-align: center;">
+          <a href="/">Return to Login</a>
+        </p>
+
+      {% else %}
+
+        <p style="text-align: center;">
+          Fill out the information below to create your account.
+        </p>
+
+        {% if error %}
+          <p class="error-message">
+            {{ error }}
+          </p>
+        {% endif %}
+
+        <form action="/register" method="POST" class="login-form">
+
+          <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token() }}"
+          >
+
+          <div class="form-group">
+            <label for="first_name">First Name:</label>
+
+            <input
+              type="text"
+              id="first_name"
+              name="first_name"
+              value="{{ values.get('first_name', '') }}"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="last_name">Last Name:</label>
+
+            <input
+              type="text"
+              id="last_name"
+              name="last_name"
+              value="{{ values.get('last_name', '') }}"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="username">Username:</label>
+
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value="{{ values.get('username', '') }}"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email:</label>
+
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value="{{ values.get('email', '') }}"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="sponsor_id">Sponsor Company:</label>
+
+            <select
+              id="sponsor_id"
+              name="sponsor_id"
+              required
+            >
+              <option value="">Select a sponsor</option>
+
+              {% for sponsor in sponsors %}
+                <option
+                  value="{{ sponsor.sponsor_id }}"
+                  {% if values.get('sponsor_id')|string == sponsor.sponsor_id|string %}
+                    selected
+                  {% endif %}
+                >
+                  {{ sponsor.sponsor_name }}
+                </option>
+              {% endfor %}
+
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password:</label>
+
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="confirm_password">Confirm Password:</label>
+
+            <input
+              type="password"
+              id="confirm_password"
+              name="confirm_password"
+              required
+            >
+          </div>
+
+          <button type="submit">
+            Create Account
+          </button>
+
+        </form>
+
+        <p style="text-align: center; margin-top: 20px;">
+          Already have an account?
+          <a href="/">Log In</a>
+        </p>
+
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

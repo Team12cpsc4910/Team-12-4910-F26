@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Applications</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/applications">Applications</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Applications</h1>
+      <p style="text-align: center;">Apply to a sponsor company to join their incentive program.</p>
+
+      <form action="/applications/new" method="get">
+        <button type="submit">Start Application</button>
+      </form>
+
+      <h2>Pending Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Sponsor</th>
+            <th>Submitted</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if pending %}
+            {% for app in pending %}
+            <tr>
+              <td>{{ app.sponsor_name }}</td>
+              <td>{{ app.submitted or '—' }}</td>
+              <td><span class="status pending">{{ app.state | capitalize }}</span></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="3" class="catalog-empty">You haven't applied to any sponsors yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>
