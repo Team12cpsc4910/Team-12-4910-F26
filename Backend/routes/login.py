@@ -1,4 +1,5 @@
 from flask import Blueprint, request, render_template, session, redirect
+from werkzeug.security import check_password_hash
 from database import get_db_connection
 
 auth_bp = Blueprint('auth', __name__)
@@ -20,8 +21,29 @@ def login():
         session['username'] = username
         return redirect('/dashboard')
         
-    else:
-        return "Invalid credentials. Please press back and try again."
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT user_id, username, password_hash, user_type
+                FROM UserAccount
+                WHERE username = %s
+            """, (username,))
+
+            user = cur.fetchone()
+
+    finally:
+        conn.close()
+
+    if user and check_password_hash(user['password_hash'], password):
+        session['user_id'] = user['user_id']
+        session['username'] = user['username']
+        session['user_type'] = user['user_type']
+
+        return redirect('/dashboard')
+
+    return "Invalid username or password. Please press back and try again."
 
 # Driver Point Report: finds the logged-in sponsor user's company, then returns every
 # point change for that company's drivers, including each driver's name and who made the change.
