@@ -2,38 +2,38 @@ DELIMITER //
 
 --DRIVER APPS
 CREATE TRIGGER log_new_app
-AFTER INSERT ON DriverApp
+AFTER INSERT ON Team12_DB.DriverApp
 FOR EACH ROW
 BEGIN
-    INSERT INTO DriverAppLog (app_id, reason, datetime)
+    INSERT INTO Team12_DB.DriverAppLog (app_id, reason, datetime)
     VALUES (NEW.app_id, 'App submitted', CURRENT_TIMESTAMP);
 END//
 
 
 CREATE TRIGGER log_updated_app
-AFTER UPDATE ON DriverApp
+AFTER UPDATE ON Team12_DB.DriverApp
 FOR EACH ROW
 BEGIN
-    INSERT INTO DriverAppLog (app_id, reason, datetime)
+    INSERT INTO Team12_DB.DriverAppLog (app_id, reason, datetime)
     VALUES (NEW.app_id, 'App updated', CURRENT_TIMESTAMP);
 END//
 
 CREATE TRIGGER log_deleted_app
-AFTER DELETE ON DriverApp
+AFTER DELETE ON Team12_DB.DriverApp
 FOR EACH ROW
 BEGIN
-    INSERT INTO DriverAppLog (app_id, reason, datetime)
+    INSERT INTO Team12_DB.DriverAppLog (app_id, reason, datetime)
     VALUES (OLD.app_id, 'App deleted', CURRENT_TIMESTAMP);
 END//
 
 --DRIVER POINT CHANGE
 CREATE TRIGGER log_points_change
-AFTER UPDATE ON DriverUser
+AFTER UPDATE ON Team12_DB.DriverUser
 FOR EACH ROW
 BEGIN
     IF OLD.points <> NEW.points THEN
         IF (NEW.points - OLD.points) > 0 THEN
-            INSERT INTO PointChangeLog (
+            INSERT INTO Team12_DB.PointChangeLog (
                 driver_id,
                 points_change,
                 reason
@@ -44,7 +44,7 @@ BEGIN
                 'Points added'
             );
         ELSE
-            INSERT INTO PointChangeLog (
+            INSERT INTO Team12_DB.PointChangeLog (
                 driver_id,
                 points_change,
                 reason
@@ -60,10 +60,10 @@ END//
 
 --RESET LOCKED STATUS AND LOGIN ATTEMPTS
 CREATE TRIGGER password_reset
-AFTER INSERT ON PasswordChangeLog
+AFTER INSERT ON Team12_DB.PasswordChangeLog
 FOR EACH ROW
 BEGIN
-    UPDATE UserAccount
+    UPDATE Team12_DB.UserAccount
     SET locked = FALSE, login_attempts = 0
     WHERE user_id = NEW.user_id;
 END//
