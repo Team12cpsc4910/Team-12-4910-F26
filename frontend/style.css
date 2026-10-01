@@ -120,6 +120,11 @@ button:hover {
   color: #721c24;
 }
 
+.status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
 .catalog-empty {
   text-align: center;
   color: #777;

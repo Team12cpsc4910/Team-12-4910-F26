@@ -6,6 +6,7 @@ from security import load_user, csrf_token
 from routes.about import about_bp
 from routes.login import auth_bp
 from routes.accounts import accounts_bp
+from routes.applications import applications_bp
 
 app = Flask(__name__, template_folder='../frontend', static_folder='../frontend')
 
@@ -26,6 +27,7 @@ app.before_request(load_user)
 app.register_blueprint(about_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(accounts_bp)
+app.register_blueprint(applications_bp)
 
 @app.route('/')
 def home():
