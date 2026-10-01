@@ -147,14 +147,6 @@ def profile():
         return redirect('/') 
     
     current_user = session['username']
-    
-    if current_user in ["admin", "driver", "sponsor"]:
-        mock_user_data = {
-            "username": current_user,
-            "email": f"{current_user}@example.com",
-            "user_type": current_user.capitalize()
-        }
-        return render_template('profile.html', user=mock_user_data)
         
     conn = get_db_connection()
     try:
