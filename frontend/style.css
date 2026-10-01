@@ -1,29 +1,25 @@
-/* Full-Screen Highway Background */
 body {
   font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.6;
   color: #f8fafc;
   margin: 0;
   padding: 40px 20px;
-  background: url('https://images.unsplash.com/photo-1581013444455-75e1f0e470bc?q=80&w=2000&auto=format&fit=crop') no-repeat center center fixed;
-  background-size: cover;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   min-height: 100vh;
 }
 
-/* Glassmorphism Container */
 .container {
   max-width: 800px; 
   margin: 0 auto;
-  background: rgba(15, 23, 42, 0.75); /* Semi-transparent dark blue/gray */
-  backdrop-filter: blur(12px); /* Frosted glass blur effect */
+  background: rgba(15, 23, 42, 0.75); 
+  backdrop-filter: blur(12px); 
   -webkit-backdrop-filter: blur(12px);
   padding: 40px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.15); /* Subtle rim light */
+  border: 1px solid rgba(255, 255, 255, 0.15); 
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* Floating Navigation Menu */
 nav {
   display: flex;
   justify-content: center;
@@ -48,11 +44,10 @@ nav a {
 }
 
 nav a:hover {
-  color: #00e676; /* Neon green tech accent */
+  color: #00e676; 
   background: rgba(0, 230, 118, 0.1);
 }
 
-/* Typography (Adjusted for Dark Background) */
 h1 {
   text-align: center;
   color: #ffffff;
@@ -76,7 +71,7 @@ p {
 dt {
   font-weight: 700;
   margin-top: 15px;
-  color: #38bdf8; /* Blue accent for labels */
+  color: #38bdf8; 
 }
 
 dd {
@@ -172,7 +167,6 @@ a:hover {
   color: #00e676;
 }
 
-/* Table Styles for Dark Mode */
 .catalog-table {
   width: 100%;
   border-collapse: separate;
