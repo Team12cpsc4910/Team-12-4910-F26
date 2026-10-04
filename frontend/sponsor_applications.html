@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Driver Applications</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Driver Applications</h1>
+      <p style="text-align: center;">Review drivers who have applied to join your incentive program.</p>
+
+      <h2>Pending Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Submitted</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if pending %}
+            {% for app in pending %}
+            <tr>
+              <td>{{ app.first_name }} {{ app.last_name }}</td>
+              <td>{{ app.submitted or '—' }}</td>
+              <td><span class="status pending">{{ app.state | capitalize }}</span></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="3" class="catalog-empty">No drivers have applied to your program yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>
