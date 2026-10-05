@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sponsor Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=5) }}" />
+  <link rel="stylesheet" href="/style.css?v=5" />
 </head>
 <body>
   <div class="container">
     <nav>
+      <a href="/sponsor/applications">Applications</a>
       <a href="/profile">My Profile</a>
       <a href="/logout">Log Out</a>
     </nav>

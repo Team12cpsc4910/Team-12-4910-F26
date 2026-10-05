@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>My Profile</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=5) }}" />
+  <link rel="stylesheet" href="/style.css?v=5" />
 </head>
 <body>
   <div class="container">
@@ -13,11 +13,27 @@
     </nav>
     <main>
       <h1 style="text-align: center;">My Profile</h1>
-      <div style="text-align: center;">
+      
+      <div style="max-width: 400px; margin: 0 auto; text-align: left;">
         <p><strong>Username:</strong> {{ user.username }}</p>
-        <p><strong>Email:</strong> {{ user.email }}</p>
         <p><strong>Account Type:</strong> {{ user.user_type }}</p>
+        
+        <form action="https://team12-backend-api.duckdns.org/profile" method="POST" style="margin-top: 30px;">
+          <div class="form-group">
+            <label for="email">Email Address:</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              value="{{ user.email }}" 
+              required
+            >
+          </div>
+          
+          <button type="submit">Save Changes</button>
+        </form>
       </div>
+      
     </main>
   </div>
 </body>
