@@ -2,30 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Applications</title>
+  <title>Driver Applications</title>
   <link rel="stylesheet" href="/style.css?v=5" />
 </head>
 <body>
   <div class="container">
     <nav>
       <a href="/dashboard">Dashboard</a>
-      <a href="/applications">Applications</a>
+      <a href="/sponsor/applications">Applications</a>
       <a href="/profile">My Profile</a>
       <a href="/logout">Log Out</a>
     </nav>
     <main>
-      <h1 style="text-align: center;">Applications</h1>
-      <p style="text-align: center;">Apply to a sponsor company to join their incentive program.</p>
-
-      <form action="/applications/new" method="get">
-        <button type="submit">Start Application</button>
-      </form>
+      <h1 style="text-align: center;">Driver Applications</h1>
+      <p style="text-align: center;">Review drivers who have applied to join your incentive program.</p>
 
       <h2>Pending Applications</h2>
       <table class="catalog-table">
         <thead>
           <tr>
-            <th>Sponsor</th>
+            <th>Driver</th>
             <th>Submitted</th>
             <th>Status</th>
           </tr>
@@ -34,14 +30,14 @@
           {% if pending %}
             {% for app in pending %}
             <tr>
-              <td>{{ app.sponsor_name }}</td>
+              <td>{{ app.first_name }} {{ app.last_name }}</td>
               <td>{{ app.submitted or '—' }}</td>
               <td><span class="status pending">{{ app.state | capitalize }}</span></td>
             </tr>
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="3" class="catalog-empty">You haven't applied to any sponsors yet.</td>
+              <td colspan="3" class="catalog-empty">No drivers have applied to your program yet.</td>
             </tr>
           {% endif %}
         </tbody>
