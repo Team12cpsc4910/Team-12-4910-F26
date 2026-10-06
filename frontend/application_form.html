@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Start Application</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/applications">Applications</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Start Application</h1>
+      <p style="text-align: center;">Choose a sponsor company and tell them why you'd like to join their incentive program.</p>
+
+      {% if error %}
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+
+      {% if sponsors %}
+      <form action="/applications/new" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label for="sponsor_id">Sponsor Company:</label>
+          <select id="sponsor_id" name="sponsor_id" required>
+            <option value="">-- Select a sponsor --</option>
+            {% for sponsor in sponsors %}
+            <option value="{{ sponsor.sponsor_id }}"
+              {% if values.get('sponsor_id') == sponsor.sponsor_id|string %}selected{% endif %}>
+              {{ sponsor.sponsor_name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Why do you want to join?</label>
+          <textarea id="message" name="message" rows="5" maxlength="{{ max_length }}" required>{{ values.get('message', '') }}</textarea>
+        </div>
+
+        <button type="submit">Submit Application</button>
+      </form>
+      {% else %}
+        <p class="catalog-empty">No sponsor companies are available to apply to right now.</p>
+      {% endif %}
+
+      <p style="text-align: center;"><a href="/applications">Cancel</a></p>
+    </main>
+  </div>
+</body>
+</html>
