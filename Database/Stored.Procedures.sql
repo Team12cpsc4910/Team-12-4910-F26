@@ -178,4 +178,29 @@ BEGIN
     COMMIT;
 END //
 
+CREATE PROCEDURE CreateLoginLog(
+    IN param_user_id INT,
+    IN param_status VARCHAR(20)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO LoginAttemptLog (
+        user_id,
+        status
+    )
+    VALUES (
+        param_user_id,
+        param_status
+    );
+
+    COMMIT;
+END //
+
 DELIMITER ;
