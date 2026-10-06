@@ -80,4 +80,19 @@ BEGIN
     END IF;
 END//
 
+CREATE TRIGGER Team12_DB.increment_failed_logins
+AFTER INSERT ON Team12_DB.LoginAttemptLog
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'Failure' THEN
+        UPDATE Team12_DB.UserAccount
+        SET failed_logins = failed_logins + 1,
+            account_locked = CASE
+                WHEN failed_logins + 1 = 5 THEN TRUE
+                ELSE account_locked
+            END
+        WHERE user_id = NEW.user_id;
+    END IF;
+END//
+
 DELIMITER ;
