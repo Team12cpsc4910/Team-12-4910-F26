@@ -68,4 +68,16 @@ BEGIN
     WHERE user_id = NEW.user_id;
 END//
 
+--RESET FAILED LOGIN ATTEMPTS
+CREATE TRIGGER Team12_DB.reset_failed_logins
+AFTER INSERT ON Team12_DB.LoginAttemptLog
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'Success' THEN
+        UPDATE Team12_DB.UserAccount
+        SET failed_logins = 0
+        WHERE user_id = NEW.user_id;
+    END IF;
+END//
+
 DELIMITER ;
