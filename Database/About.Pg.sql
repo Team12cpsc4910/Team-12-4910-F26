@@ -1,4 +1,4 @@
-CREATE TABLE AboutPage (
+CREATE TABLE  Team12_DB.AboutPage (
   about_id INT PRIMARY KEY,
   team_number INT NOT NULL,
   version_number INT NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE AboutPage (
   product_description VARCHAR(500) NOT NULL
 );
 
-INSERT INTO AboutPage (
+INSERT INTO Team12_DB.AboutPage (
   about_id,
   team_number,
   version_number,
