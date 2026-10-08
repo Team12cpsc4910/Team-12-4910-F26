@@ -29,6 +29,18 @@ jobs:
           printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+          if [ -z "$EC2_KNOWN_HOSTS" ]; then
+            echo "ERROR: EC2_KNOWN_HOSTS secret is empty"
+            exit 1
+          fi
+          
+          if ! awk -v host="$EC2_HOST" '$1 == host && $2 == "ssh-ed25519" {found=1} END {exit !found}' ~/.ssh/known_hosts; then
+            echo "ERROR: Host key does not match EC2_HOST"
+            exit 1
+          fi
+          
+          echo "EC2 host key entry found"
+
           ssh -i ~/.ssh/deploy_key \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
