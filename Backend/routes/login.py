@@ -10,16 +10,19 @@ def login():
     password = request.form.get('password')
   
     if username == "admin" and password == "test":
-        session['username'] = username
-        return redirect('/dashboard')
-        
-    elif username == "driver" and password == "test":
-        session['username'] = username
-        return redirect('/dashboard')
-        
-    elif username == "sponsor" and password == "test":
-        session['username'] = username
-        return redirect('/dashboard')
+    session['username'] = username
+    session['user_type'] = 'Admin'
+    return redirect('/dashboard')
+
+elif username == "driver" and password == "test":
+    session['username'] = username
+    session['user_type'] = 'Driver'
+    return redirect('/dashboard')
+
+elif username == "sponsor" and password == "test":
+    session['username'] = username
+    session['user_type'] = 'Sponsor'
+    return redirect('/dashboard')
         
     conn = get_db_connection()
 
