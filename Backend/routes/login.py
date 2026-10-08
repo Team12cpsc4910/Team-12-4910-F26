@@ -10,21 +10,21 @@ def login():
     password = request.form.get('password')
   
     if username == "admin" and password == "test":
-    session['username'] = username
-    session['user_type'] = 'Admin'
-    return redirect('/dashboard')
-
-elif username == "driver" and password == "test":
-    session['username'] = username
-    session['user_type'] = 'Driver'
-    return redirect('/dashboard')
-
-elif username == "sponsor" and password == "test":
-    session['username'] = username
-    session['user_type'] = 'Sponsor'
-    return redirect('/dashboard')
-        
-    conn = get_db_connection()
+        session['username'] = username
+        session['user_type'] = 'Admin'
+        return redirect('/dashboard')
+    
+    elif username == "driver" and password == "test":
+        session['username'] = username
+        session['user_type'] = 'Driver'
+        return redirect('/dashboard')
+    
+    elif username == "sponsor" and password == "test":
+        session['username'] = username
+        session['user_type'] = 'Sponsor'
+        return redirect('/dashboard')
+            
+        conn = get_db_connection()
 
     try:
         with conn.cursor() as cur:
@@ -88,16 +88,22 @@ def dashboard():
         return redirect('/')
     
     current_user = session['username']
+    user_type = session.get('user_type')
     
-    if current_user == "admin":
+    if user_type == "Admin":
         return render_template('admin_dashboard.html')
-    elif current_user == "sponsor":
-        return render_template('sponsor_dashboard.html', report=get_sponsor_point_report(current_user))
-    else:
-        points = 0
-        history = []
-        catalog = []
-        approved = False
+    
+    elif user_type == "Sponsor":
+        return render_template(
+            'sponsor_dashboard.html',
+            report=get_sponsor_point_report(current_user)
+        )
+    
+    elif user_type == "Driver":
+            points = 0
+            history = []
+            catalog = []
+            approved = False
 
         try:
             conn = get_db_connection()
