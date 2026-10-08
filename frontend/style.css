@@ -252,3 +252,34 @@ a:hover {
   text-align: center;
   font-weight: 600;
 }
+
+.password-reqs {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 10px;
+  font-size: 0.85em;
+  color: #cbd5e1;
+}
+
+.password-reqs li {
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  transition: color 0.3s ease;
+}
+
+.password-reqs li::before {
+  content: 'X';
+  color: #f87171;
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+.password-reqs li.valid::before {
+  content: '✓';
+  color: #4ade80; 
+}
+
+.password-reqs li.valid {
+  color: #f8fafc;
+}
