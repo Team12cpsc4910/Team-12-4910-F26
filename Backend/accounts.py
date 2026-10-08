@@ -57,8 +57,10 @@ def create_account(data, role, *, allow_new_company=False):
                 cur.execute('INSERT INTO SponsorUser (user_id, sponsor_id, first_name, last_name) VALUES (%s, %s, %s, %s)',
                             (user_id, sponsor_id, data['first_name'], data['last_name']))
             else:
-                cur.execute('INSERT INTO AdminUser (user_id, first_name, last_name, email, password_hash) VALUES (%s, %s, %s, %s, %s)',
-                            (user_id, data['first_name'], data['last_name'], data['email'], hashed))
+                cur.execute(
+                    'INSERT INTO AdminUser (user_id, first_name, last_name) VALUES (%s, %s, %s)',
+                    (user_id, data['first_name'], data['last_name'])
+                )
         conn.commit()
         return user_id
     except pymysql.IntegrityError as exc:
