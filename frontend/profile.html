@@ -27,13 +27,86 @@
               name="email" 
               value="{{ user.email }}" 
               required
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>My Profile</title>
+
+  <link rel="stylesheet" href="/style.css?v=5">
+</head>
+
+<body>
+
+  <div class="container">
+
+    <nav>
+      <a href="/dashboard">Back to Dashboard</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+
+    <main>
+
+      <h1 style="text-align: center;">My Profile</h1>
+
+      <div style="max-width: 400px; margin: 0 auto; text-align: left;">
+
+        <p>
+          <strong>Username:</strong>
+          {{ user.username }}
+        </p>
+
+        <p>
+          <strong>Account Type:</strong>
+          {{ user.user_type }}
+        </p>
+
+        <form action="/profile" method="POST" style="margin-top: 30px;">
+
+          <div class="form-group">
+            <label for="first_name">First Name:</label>
+
+            <input
+              type="text"
+              id="first_name"
+              name="first_name"
+              value="{{ user.first_name }}"
+              required
             >
           </div>
-          
-          <button type="submit">Save Changes</button>
+
+          <div class="form-group">
+            <label for="last_name">Last Name:</label>
+
+            <input
+              type="text"
+              id="last_name"
+              name="last_name"
+              value="{{ user.last_name }}"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address:</label>
+
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value="{{ user.email }}"
+              required
+            >
+          </div>
+
+          <button type="submit">
+            Save Changes
+          </button>
         </form>
       </div>
-      
     </main>
   </div>
 </body>
