@@ -29,6 +29,23 @@ jobs:
           printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+          echo "Checking EC2 connection settings..."
+
+          if [ "$EC2_HOST" = "54.160.249.17" ]; then
+            echo "EC2_HOST: Correct"
+          else
+            echo "EC2_HOST: Incorrect"
+          fi
+          
+          awk -v host="$EC2_HOST" '
+          NF > 0 {
+            print "Known hosts entry " NR
+            print "Number of fields:", NF
+            print "IP matches:", ($1 == host ? "YES" : "NO")
+            print "Key type correct:", ($2 == "ssh-ed25519" ? "YES" : "NO")
+          }
+          ' ~/.ssh/known_hosts
+
           if [ -z "$EC2_KNOWN_HOSTS" ]; then
             echo "ERROR: EC2_KNOWN_HOSTS secret is empty"
             exit 1
