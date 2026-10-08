@@ -201,10 +201,12 @@ def dashboard():
 
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
-@login_required
 def profile():
-    user_id = g.user['user_id']
-    user_type = g.user['user_type']
+    if 'username' not in session:
+        return redirect('/')
+
+    current_user = session['username']
+    user_type = session.get('user_type')
 
     conn = get_db_connection()
 
@@ -212,84 +214,55 @@ def profile():
         with conn.cursor() as cur:
 
             if request.method == 'POST':
-                check_csrf()
-
-                new_email = request.form.get('email', '').strip().lower()
+                new_email = request.form.get('email', '').strip()
                 first_name = request.form.get('first_name', '').strip()
                 last_name = request.form.get('last_name', '').strip()
-
-                if not new_email or not first_name or not last_name:
-                    return "Email, first name, and last name are required.", 400
 
                 cur.execute("""
                     UPDATE UserAccount
                     SET email = %s
-                    WHERE user_id = %s
-                """, (new_email, user_id))
+                    WHERE username = %s
+                """, (new_email, current_user))
 
-                if user_type == 'Driver':
+                if user_type == 'Admin':
                     cur.execute("""
-                        UPDATE DriverUser
+                        UPDATE AdminUser
                         SET first_name = %s,
                             last_name = %s
-                        WHERE user_id = %s
-                    """, (first_name, last_name, user_id))
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
 
                 elif user_type == 'Sponsor':
                     cur.execute("""
                         UPDATE SponsorUser
                         SET first_name = %s,
                             last_name = %s
-                        WHERE user_id = %s
-                    """, (first_name, last_name, user_id))
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
 
-                elif user_type == 'Admin':
+                elif user_type == 'Driver':
                     cur.execute("""
-                        UPDATE AdminUser
+                        UPDATE DriverUser
                         SET first_name = %s,
                             last_name = %s
-                        WHERE user_id = %s
-                    """, (first_name, last_name, user_id))
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
 
                 conn.commit()
 
-            if user_type == 'Driver':
-                cur.execute("""
-                    SELECT
-                        u.username,
-                        u.email,
-                        u.user_type,
-                        d.first_name,
-                        d.last_name,
-                        d.points,
-                        d.application_status,
-                        s.sponsor_name
-                    FROM UserAccount u
-                    JOIN DriverUser d
-                        ON u.user_id = d.user_id
-                    JOIN Sponsor s
-                        ON d.sponsor_id = s.sponsor_id
-                    WHERE u.user_id = %s
-                """, (user_id,))
-
-            elif user_type == 'Sponsor':
-                cur.execute("""
-                    SELECT
-                        u.username,
-                        u.email,
-                        u.user_type,
-                        su.first_name,
-                        su.last_name,
-                        s.sponsor_name
-                    FROM UserAccount u
-                    JOIN SponsorUser su
-                        ON u.user_id = su.user_id
-                    JOIN Sponsor s
-                        ON su.sponsor_id = s.sponsor_id
-                    WHERE u.user_id = %s
-                """, (user_id,))
-
-            elif user_type == 'Admin':
+            if user_type == 'Admin':
                 cur.execute("""
                     SELECT
                         u.username,
@@ -300,8 +273,36 @@ def profile():
                     FROM UserAccount u
                     JOIN AdminUser a
                         ON u.user_id = a.user_id
-                    WHERE u.user_id = %s
-                """, (user_id,))
+                    WHERE u.username = %s
+                """, (current_user,))
+
+            elif user_type == 'Sponsor':
+                cur.execute("""
+                    SELECT
+                        u.username,
+                        u.email,
+                        u.user_type,
+                        s.first_name,
+                        s.last_name
+                    FROM UserAccount u
+                    JOIN SponsorUser s
+                        ON u.user_id = s.user_id
+                    WHERE u.username = %s
+                """, (current_user,))
+
+            elif user_type == 'Driver':
+                cur.execute("""
+                    SELECT
+                        u.username,
+                        u.email,
+                        u.user_type,
+                        d.first_name,
+                        d.last_name
+                    FROM UserAccount u
+                    JOIN DriverUser d
+                        ON u.user_id = d.user_id
+                    WHERE u.username = %s
+                """, (current_user,))
 
             user = cur.fetchone()
 
