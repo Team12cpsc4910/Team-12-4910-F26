@@ -150,6 +150,10 @@ def dashboard():
 
         return render_template('driver_dashboard.html', points=points, history=history, catalog=catalog, approved=approved)
 
+        else:
+            session.clear()
+            return redirect('/')
+
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 def profile():
     if 'username' not in session:
@@ -183,5 +187,5 @@ def profile():
 
 @auth_bp.route('/logout')
 def logout():
-    session.pop('username', None)
+    session.clear()
     return redirect('/')
