@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Driver Profile</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>{{ driver.first_name }} {{ driver.last_name }}</h1>
+
+      <h2>Profile</h2>
+      <dl>
+        <dt>Username</dt>
+        <dd>{{ driver.username }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ driver.email }}</dd>
+
+        <dt>Sponsor</dt>
+        <dd>{{ driver.sponsor_name }}</dd>
+      </dl>
+
+      <h2>Status</h2>
+      <dl>
+        <dt>Application Status</dt>
+        <dd><span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span></dd>
+
+        <dt>Account</dt>
+        <dd>
+          {% if driver.account_locked %}
+            <span class="status out-of-stock">Locked</span>
+          {% else %}
+            <span class="status in-stock">Active</span>
+          {% endif %}
+        </dd>
+
+        <dt>Points Balance</dt>
+        <dd>{{ driver.points }} Points</dd>
+      </dl>
+
+      <h2>Point History</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Change</th>
+            <th>Changed By</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if history %}
+            {% for row in history %}
+            <tr>
+              <td>{{ row.datetime }}</td>
+              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td>{{ row.changed_by }}</td>
+              <td>{{ row.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No point history for this driver yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <p style="text-align: center;"><a href="/sponsor/drivers">Back to Drivers</a></p>
+    </main>
+  </div>
+</body>
+</html>
