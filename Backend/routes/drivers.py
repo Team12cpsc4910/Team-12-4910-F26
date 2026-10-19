@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, session, redirect, abort
+from flask import Blueprint, render_template, request, session, redirect, abort
 
+from accounts import create_account, AccountValidationError
 from database import get_db_connection
 from routes.applications import is_sponsor_session, find_sponsor_id
+from security import check_csrf
 
 drivers_bp = Blueprint('drivers', __name__)
 
@@ -72,7 +74,62 @@ def sponsor_drivers():
     if not is_sponsor_session():
         return redirect('/dashboard')
 
-    return render_template('sponsor_drivers.html', drivers=get_sponsor_drivers(session['username']))
+    return render_template('sponsor_drivers.html', drivers=get_sponsor_drivers(session['username']),
+                           added=request.args.get('added') == '1')
+
+
+# The logged-in sponsor user's company (id and name), or None if the account isn't linked to one
+def get_sponsor_company(username):
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT s.sponsor_id, s.sponsor_name
+                FROM SponsorUser su
+                JOIN UserAccount u ON su.user_id = u.user_id
+                JOIN Sponsor s ON su.sponsor_id = s.sponsor_id
+                WHERE u.username = %s
+            """, (username,))
+            return cur.fetchone()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return None
+    finally:
+        if conn and conn.open:
+            conn.close()
+
+
+# Add Driver: a sponsor onboards a driver directly into their own program. The driver is
+# created already Approved, since the sponsor is adding them without an application.
+@drivers_bp.route('/sponsor/drivers/new', methods=['GET', 'POST'])
+def add_sponsor_driver():
+    if 'username' not in session:
+        return redirect('/')
+    if not is_sponsor_session():
+        return redirect('/dashboard')
+
+    company = get_sponsor_company(session['username'])
+    error = None
+    values = {}
+    if request.method == 'POST':
+        check_csrf()
+        if not company:
+            abort(403)
+        values = {k: request.form.get(k, '').strip() for k in ('username', 'email', 'first_name', 'last_name')}
+        values['email'] = values['email'].lower()
+        # The company always comes from the sponsor's own account, never from the form
+        data = {**values, 'sponsor_id': str(company['sponsor_id']), 'company_name': '',
+                'password': request.form.get('password', ''),
+                'confirm_password': request.form.get('confirm_password', '')}
+        try:
+            create_account(data, 'Driver', driver_status='Approved')
+            return redirect('/sponsor/drivers?added=1')
+        except AccountValidationError as exc:
+            error = str(exc)
+
+    return render_template('sponsor_driver_form.html', company=company, values=values,
+                           error=error), (400 if error else 200)
 
 
 @drivers_bp.route('/sponsor/drivers/<int:driver_id>')

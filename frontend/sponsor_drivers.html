@@ -18,6 +18,14 @@
       <h1 style="text-align: center;">My Drivers</h1>
       <p style="text-align: center;">Drivers in your incentive program. Select a driver to view their profile.</p>
 
+      {% if added %}
+        <p class="success-message">Driver added. They can now log in with the username and password you set.</p>
+      {% endif %}
+
+      <form action="/sponsor/drivers/new" method="get">
+        <button type="submit">Add Driver</button>
+      </form>
+
       <table class="catalog-table">
         <thead>
           <tr>

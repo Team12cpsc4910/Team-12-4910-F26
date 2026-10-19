@@ -27,7 +27,8 @@ def validate_account(data, role):
     if password != data.get('confirm_password'):
         raise AccountValidationError('Passwords do not match.')
 
-def create_account(data, role, *, allow_new_company=False):
+# driver_status lets a sponsor onboard a driver directly as 'Approved'; self-registration stays 'Pending'
+def create_account(data, role, *, allow_new_company=False, driver_status='Pending'):
     validate_account(data, role)
     company = data.get('company_name', '').strip()
     if company and (not allow_new_company or role != 'Sponsor'):
@@ -54,8 +55,8 @@ def create_account(data, role, *, allow_new_company=False):
                         (data['username'], data['email'], hashed, role))
             user_id = cur.lastrowid
             if role == 'Driver':
-                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, 'Pending', %s, %s)",
-                            (user_id, sponsor_id, data['first_name'], data['last_name']))
+                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, %s, %s, %s)",
+                            (user_id, sponsor_id, driver_status, data['first_name'], data['last_name']))
             elif role == 'Sponsor':
                 cur.execute('INSERT INTO SponsorUser (user_id, sponsor_id, first_name, last_name) VALUES (%s, %s, %s, %s)',
                             (user_id, sponsor_id, data['first_name'], data['last_name']))
