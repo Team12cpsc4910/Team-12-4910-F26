@@ -8,6 +8,7 @@ from routes.login import auth_bp
 from routes.accounts import accounts_bp
 from routes.applications import applications_bp
 from routes.drivers import drivers_bp
+from routes.company import company_bp
 
 app = Flask(__name__, template_folder='../frontend', static_folder='../frontend')
 
@@ -30,6 +31,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(accounts_bp)
 app.register_blueprint(applications_bp)
 app.register_blueprint(drivers_bp)
+app.register_blueprint(company_bp)
 
 @app.route('/')
 def home():

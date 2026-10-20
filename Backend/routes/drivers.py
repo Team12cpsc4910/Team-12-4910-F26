@@ -78,14 +78,14 @@ def sponsor_drivers():
                            added=request.args.get('added') == '1')
 
 
-# The logged-in sponsor user's company (id and name), or None if the account isn't linked to one
+# The logged-in sponsor user's company (id, name, point value), or None if the account isn't linked to one
 def get_sponsor_company(username):
     conn = None
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT s.sponsor_id, s.sponsor_name
+                SELECT s.sponsor_id, s.sponsor_name, s.point_value
                 FROM SponsorUser su
                 JOIN UserAccount u ON su.user_id = u.user_id
                 JOIN Sponsor s ON su.sponsor_id = s.sponsor_id
