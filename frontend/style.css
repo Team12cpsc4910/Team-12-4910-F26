@@ -159,6 +159,17 @@ button:hover {
   box-shadow: 0 6px 20px rgba(0, 114, 255, 0.6);
 }
 
+/* Destructive actions, e.g. deducting points */
+button.danger {
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+}
+
+button.danger:hover {
+  background: linear-gradient(135deg, #dc2626, #f87171);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+}
+
 button:active {
   transform: translateY(1px);
 }

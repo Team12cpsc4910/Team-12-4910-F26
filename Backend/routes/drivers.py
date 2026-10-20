@@ -141,16 +141,18 @@ def add_sponsor_driver():
                            error=error), (400 if error else 200)
 
 
-# Add Points: rewards an approved driver in the sponsor's program, recording the reason and
-# which sponsor user gave the points. Returns False if the driver isn't in the sponsor's program.
-def add_driver_points(username, driver_id, points, reason):
+# Add/Deduct Points: rewards or penalizes an approved driver in the sponsor's program, recording
+# the reason and which sponsor user made the change. Returns False if the driver isn't in the
+# sponsor's program.
+def change_driver_points(username, driver_id, points, reason, *, deduct=False):
+    verb = 'deducting' if deduct else 'adding'
     if not points.isdigit() or not 1 <= int(points) <= MAX_POINTS_PER_CHANGE:
         raise PointsError(f'Enter a whole number of points from 1 to {MAX_POINTS_PER_CHANGE:,}.')
     if not reason:
-        raise PointsError('Enter a reason for adding these points.')
+        raise PointsError(f'Enter a reason for {verb} these points.')
     if len(reason) > MAX_REASON_LENGTH:
         raise PointsError(f'The reason must be {MAX_REASON_LENGTH} characters or fewer.')
-    points = int(points)
+    change = -int(points) if deduct else int(points)
 
     conn = get_db_connection()
     try:
@@ -167,7 +169,7 @@ def add_driver_points(username, driver_id, points, reason):
 
             # Locking the driver row keeps two point changes for the same driver from interleaving
             cur.execute("""
-                SELECT application_status FROM DriverUser
+                SELECT application_status, points FROM DriverUser
                 WHERE driver_id = %s AND sponsor_id = %s
                 FOR UPDATE
             """, (driver_id, sponsor_user['sponsor_id']))
@@ -175,16 +177,19 @@ def add_driver_points(username, driver_id, points, reason):
             if not driver:
                 return False
             if driver['application_status'] != 'Approved':
-                raise PointsError('Points can only be added to approved drivers.')
+                raise PointsError(f"Points can only be {'deducted from' if deduct else 'added to'} approved drivers.")
+            # DriverUser.points has CHECK (points >= 0), so a deduction can't overdraw the balance
+            if driver['points'] + change < 0:
+                raise PointsError(f"This driver only has {driver['points']} points, so you can't deduct {points}.")
 
             cur.execute('SELECT COALESCE(MAX(point_log_id), 0) AS last_id FROM PointChangeLog WHERE driver_id = %s',
                         (driver_id,))
             last_id = cur.fetchone()['last_id']
 
-            cur.execute('UPDATE DriverUser SET points = points + %s WHERE driver_id = %s', (points, driver_id))
+            cur.execute('UPDATE DriverUser SET points = points + %s WHERE driver_id = %s', (change, driver_id))
 
-            # The log_points_change trigger (if installed) logs a generic "Points added" row with no
-            # reason or sponsor user. Fill those in on that row; otherwise write the log row here.
+            # The log_points_change trigger (if installed) logs a generic "Points added"/"Points removed"
+            # row with no reason or sponsor user. Fill those in on that row; otherwise write the log row here.
             cur.execute("""
                 SELECT point_log_id FROM PointChangeLog
                 WHERE driver_id = %s AND point_log_id > %s
@@ -198,7 +203,7 @@ def add_driver_points(username, driver_id, points, reason):
                 cur.execute("""
                     INSERT INTO PointChangeLog (driver_id, sponsor_user_id, points_change, reason)
                     VALUES (%s, %s, %s, %s)
-                """, (driver_id, sponsor_user['sponsor_user_id'], points, reason))
+                """, (driver_id, sponsor_user['sponsor_user_id'], change, reason))
         conn.commit()
         return True
     except Exception:
@@ -225,24 +230,41 @@ def sponsor_driver_profile(driver_id):
     if not driver:
         abort(404)
     points_added = request.args.get('points_added', '')
-    return render_driver_profile(driver, history, points_added=points_added if points_added.isdigit() else None)
+    points_deducted = request.args.get('points_deducted', '')
+    return render_driver_profile(driver, history,
+                                 points_added=points_added if points_added.isdigit() else None,
+                                 points_deducted=points_deducted if points_deducted.isdigit() else None)
 
 
-@drivers_bp.route('/sponsor/drivers/<int:driver_id>/points', methods=['POST'])
-def add_sponsor_driver_points(driver_id):
+# Shared by the Add Points and Deduct Points forms; form_name says which form shows the error
+def handle_points_form(driver_id, *, deduct):
     if 'username' not in session:
         return redirect('/')
     if not is_sponsor_session():
         return redirect('/dashboard')
     check_csrf()
 
+    form_name = 'deduct' if deduct else 'add'
     values = {k: request.form.get(k, '').strip() for k in ('points', 'reason')}
     try:
-        if not add_driver_points(session['username'], driver_id, values['points'], values['reason']):
+        if not change_driver_points(session['username'], driver_id, values['points'], values['reason'],
+                                    deduct=deduct):
             abort(404)
     except PointsError as exc:
         driver, history = get_sponsor_driver(session['username'], driver_id)
         if not driver:
             abort(404)
-        return render_driver_profile(driver, history, values=values, points_error=str(exc)), 400
-    return redirect(f"/sponsor/drivers/{driver_id}?points_added={int(values['points'])}")
+        return render_driver_profile(driver, history, values=values, points_error=str(exc),
+                                     error_form=form_name), 400
+    result = 'points_deducted' if deduct else 'points_added'
+    return redirect(f"/sponsor/drivers/{driver_id}?{result}={int(values['points'])}")
+
+
+@drivers_bp.route('/sponsor/drivers/<int:driver_id>/points', methods=['POST'])
+def add_sponsor_driver_points(driver_id):
+    return handle_points_form(driver_id, deduct=False)
+
+
+@drivers_bp.route('/sponsor/drivers/<int:driver_id>/points/deduct', methods=['POST'])
+def deduct_sponsor_driver_points(driver_id):
+    return handle_points_form(driver_id, deduct=True)
