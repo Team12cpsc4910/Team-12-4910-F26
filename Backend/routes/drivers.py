@@ -17,6 +17,10 @@ class PointsError(ValueError):
     pass
 
 
+class DropError(ValueError):
+    pass
+
+
 # Sponsor Drivers tab: every driver in the logged-in sponsor's program, so the sponsor
 # can pick one to view.
 def get_sponsor_drivers(username):
@@ -219,6 +223,38 @@ def render_driver_profile(driver, history, **extra):
                            values=extra.pop('values', {}), **extra)
 
 
+# Drop Driver: removes an approved driver from the sponsor's program by marking them 'Dropped'.
+# Catalog access and point changes require 'Approved', so the driver loses access right away;
+# their account, balance, and point history are kept. Returns False if the driver isn't in the
+# sponsor's program.
+def drop_driver(username, driver_id):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            sponsor_id = find_sponsor_id(cur, username)
+            if not sponsor_id:
+                return False
+            cur.execute("""
+                SELECT application_status FROM DriverUser
+                WHERE driver_id = %s AND sponsor_id = %s
+                FOR UPDATE
+            """, (driver_id, sponsor_id))
+            driver = cur.fetchone()
+            if not driver:
+                return False
+            if driver['application_status'] != 'Approved':
+                raise DropError('Only approved drivers in your program can be dropped.')
+
+            cur.execute("UPDATE DriverUser SET application_status = 'Dropped' WHERE driver_id = %s", (driver_id,))
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 @drivers_bp.route('/sponsor/drivers/<int:driver_id>')
 def sponsor_driver_profile(driver_id):
     if 'username' not in session:
@@ -233,7 +269,27 @@ def sponsor_driver_profile(driver_id):
     points_deducted = request.args.get('points_deducted', '')
     return render_driver_profile(driver, history,
                                  points_added=points_added if points_added.isdigit() else None,
-                                 points_deducted=points_deducted if points_deducted.isdigit() else None)
+                                 points_deducted=points_deducted if points_deducted.isdigit() else None,
+                                 dropped=request.args.get('dropped') == '1')
+
+
+@drivers_bp.route('/sponsor/drivers/<int:driver_id>/drop', methods=['POST'])
+def drop_sponsor_driver(driver_id):
+    if 'username' not in session:
+        return redirect('/')
+    if not is_sponsor_session():
+        return redirect('/dashboard')
+    check_csrf()
+
+    try:
+        if not drop_driver(session['username'], driver_id):
+            abort(404)
+    except DropError as exc:
+        driver, history = get_sponsor_driver(session['username'], driver_id)
+        if not driver:
+            abort(404)
+        return render_driver_profile(driver, history, drop_error=str(exc)), 409
+    return redirect(f'/sponsor/drivers/{driver_id}?dropped=1')
 
 
 # Shared by the Add Points and Deduct Points forms; form_name says which form shows the error

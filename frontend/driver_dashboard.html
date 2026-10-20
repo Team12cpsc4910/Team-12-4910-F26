@@ -49,7 +49,9 @@
 
       <!-- Sponsor catalog: only products from the driver's own sponsor, and only after their application is approved -->
       <h2>My Sponsor's Catalog</h2>
-      {% if not approved %}
+      {% if dropped %}
+      <p class="catalog-empty">You've been dropped from your sponsor's program, so their catalog is no longer available. You can apply to a sponsor from the Applications tab.</p>
+      {% elif not approved %}
       <p class="catalog-empty">Your catalog will be available once your sponsor approves your application.</p>
       {% else %}
       <table class="catalog-table">

@@ -18,6 +18,10 @@
     <main>
       <h1>{{ driver.first_name }} {{ driver.last_name }}</h1>
 
+      {% if dropped %}
+        <p class="success-message">{{ driver.first_name }} has been dropped from your program and no longer has access to your catalog.</p>
+      {% endif %}
+
       <h2>Profile</h2>
       <dl>
         <dt>Username</dt>
@@ -135,6 +139,24 @@
           {% endif %}
         </tbody>
       </table>
+
+      <h2>Program Membership</h2>
+      {% if drop_error %}
+        <p class="error-message">{{ drop_error }}</p>
+      {% endif %}
+
+      {% if driver.application_status == 'Approved' %}
+      <p>Dropping this driver removes their access to your catalog and stops point changes. Their account, points balance, and history are kept, and they can apply to your program again later.</p>
+      <form action="/sponsor/drivers/{{ driver.driver_id }}/drop" method="POST" class="login-form"
+            onsubmit="return confirm('Drop this driver from your program?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="danger">Drop Driver</button>
+      </form>
+      {% elif driver.application_status == 'Dropped' %}
+        <p class="catalog-empty">This driver has been dropped from your program.</p>
+      {% else %}
+        <p class="catalog-empty">Only approved drivers can be dropped from your program.</p>
+      {% endif %}
 
       <p style="text-align: center;"><a href="/sponsor/drivers">Back to Drivers</a></p>
     </main>

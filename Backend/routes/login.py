@@ -122,6 +122,7 @@ def dashboard():
         history = []
         catalog = []
         approved = False
+        dropped = False
         conn = None
 
         try:
@@ -166,6 +167,7 @@ def dashboard():
                     history = cur.fetchall()
 
                     approved = driver['application_status'] == 'Approved'
+                    dropped = driver['application_status'] == 'Dropped'
 
                     if approved:
                         cur.execute("""
@@ -192,7 +194,8 @@ def dashboard():
             points=points,
             history=history,
             catalog=catalog,
-            approved=approved
+            approved=approved,
+            dropped=dropped
         )
 
     else:
