@@ -48,6 +48,35 @@
         <dd>{{ driver.points }} Points</dd>
       </dl>
 
+      <h2>Add Points</h2>
+      {% if points_added %}
+        <p class="success-message">Added {{ points_added }} points.</p>
+      {% endif %}
+      {% if points_error %}
+        <p class="error-message">{{ points_error }}</p>
+      {% endif %}
+
+      {% if driver.application_status == 'Approved' %}
+      <form action="/sponsor/drivers/{{ driver.driver_id }}/points" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label for="points">Points to Add:</label>
+          <input type="number" id="points" name="points" min="1" max="{{ max_points }}" step="1"
+                 value="{{ values.get('points', '') }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="reason">Reason (required):</label>
+          <textarea id="reason" name="reason" rows="3" maxlength="{{ max_reason }}" required>{{ values.get('reason', '') }}</textarea>
+        </div>
+
+        <button type="submit">Add Points</button>
+      </form>
+      {% else %}
+        <p class="catalog-empty">Points can be added once this driver's application is approved.</p>
+      {% endif %}
+
       <h2>Point History</h2>
       <table class="catalog-table">
         <thead>
