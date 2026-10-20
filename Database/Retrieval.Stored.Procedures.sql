@@ -92,4 +92,33 @@ BEGIN
     END IF;
 END //
 
+CREATE PROCEDURE GetSponsorPointChangeLogs(
+    IN param_sponsor_user_id INT,
+    IN param_driver_id INT,
+    IN param_start_date DATETIME,
+    IN param_end_date DATETIME
+)
+BEGIN
+    SELECT PointChangeLog.*
+    FROM PointChangeLog
+    INNER JOIN DriverUser
+        ON PointChangeLog.driver_id = DriverUser.driver_id
+    INNER JOIN SponsorUser
+        ON DriverUser.sponsor_id = SponsorUser.sponsor_id
+    WHERE SponsorUser.sponsor_user_id = param_sponsor_user_id
+      AND (
+          param_driver_id IS NULL
+          OR PointChangeLog.driver_id = param_driver_id
+      )
+      AND (
+          param_start_date IS NULL
+          OR PointChangeLog.`datetime` >= param_start_date
+      )
+      AND (
+          param_end_date IS NULL
+          OR PointChangeLog.`datetime` <= param_end_date
+      )
+    ORDER BY PointChangeLog.`datetime` DESC;
+END //
+
 DELIMITER ;
