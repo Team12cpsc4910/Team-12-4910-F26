@@ -57,4 +57,39 @@ BEGIN
     ORDER BY `datetime` DESC;
 END //
 
+CREATE PROCEDURE GetUserAccountInfo(
+    IN param_user_id INT
+)
+BEGIN
+    DECLARE val_user_type VARCHAR(20);
+
+    SELECT user_type
+    INTO val_user_type
+    FROM UserAccount
+    WHERE user_id = param_user_id;
+
+    IF val_user_type = 'Driver' THEN
+        SELECT *
+        FROM UserAccount
+        INNER JOIN DriverUser
+            ON UserAccount.user_id = DriverUser.user_id
+        WHERE UserAccount.user_id = param_user_id;
+
+    ELSEIF val_user_type = 'Sponsor' THEN
+        SELECT *
+        FROM UserAccount
+        INNER JOIN SponsorUser
+            ON UserAccount.user_id = SponsorUser.user_id
+        WHERE UserAccount.user_id = param_user_id;
+
+    ELSEIF val_user_type = 'Admin' THEN
+        SELECT *
+        FROM UserAccount
+        INNER JOIN AdminUser
+            ON UserAccount.user_id = AdminUser.user_id
+        WHERE UserAccount.user_id = param_user_id;
+
+    END IF;
+END //
+
 DELIMITER ;
