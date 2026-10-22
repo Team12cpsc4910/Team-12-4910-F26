@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Company Profile</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/sponsor/company">Company</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Company Profile</h1>
+
+      {% if company %}
+        <p style="text-align: center;">Keep your sponsor company's information up to date. Drivers see this name when they sign up and apply.</p>
+
+        {% if saved %}
+          <p class="success-message">Company profile updated.</p>
+        {% endif %}
+
+        {% if error %}
+          <p class="error-message">{{ error }}</p>
+        {% endif %}
+
+        <form action="/sponsor/company" method="POST" class="login-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label for="sponsor_name">Company Name:</label>
+            <input type="text" id="sponsor_name" name="sponsor_name" maxlength="{{ max_length }}"
+                   value="{{ values.get('sponsor_name', company.sponsor_name) }}" required>
+          </div>
+
+          <button type="submit">Save Changes</button>
+        </form>
+
+        <h2>Program Details</h2>
+        <dl>
+          <dt>Point Value</dt>
+          <dd>${{ company.point_value }} per point</dd>
+        </dl>
+      {% else %}
+        <p class="catalog-empty">Your account isn't linked to a sponsor company.</p>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

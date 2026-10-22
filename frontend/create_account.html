@@ -140,14 +140,43 @@
 
           <div class="form-group">
             <label for="password">Password:</label>
-
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-            >
+            <input type="password" id="password" name="password" required>
+  
+            <ul id="password-reqs" class="password-reqs">
+              <li id="req-length" class="invalid">Minimum of 8 characters</li>
+              <li id="req-upper" class="invalid">Contain 1 uppercase letter</li>
+              <li id="req-number" class="invalid">Contain 1 number</li>
+            </ul>
           </div>
+
+          <script>
+            const passwordInput = document.getElementById('password');
+            const reqLength = document.getElementById('req-length');
+            const reqUpper = document.getElementById('req-upper');
+            const reqNumber = document.getElementById('req-number');
+
+            passwordInput.addEventListener('input', function() {
+              const val = passwordInput.value;
+    
+              if (val.length >= 8) {
+                reqLength.classList.replace('invalid', 'valid');
+              } else {
+                reqLength.classList.replace('valid', 'invalid');
+              }
+    
+              if (/[A-Z]/.test(val)) {
+                reqUpper.classList.replace('invalid', 'valid');
+              } else {
+                reqUpper.classList.replace('valid', 'invalid');
+              }
+    
+              if (/[0-9]/.test(val)) {
+                reqNumber.classList.replace('invalid', 'valid');
+              } else {
+                reqNumber.classList.replace('valid', 'invalid');
+              }
+            });
+          </script>
 
           <div class="form-group">
             <label for="confirm_password">Confirm Password:</label>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>View Application</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/sponsor/company">Company</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Driver Application</h1>
+
+      {% if error %}
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+
+      <dl>
+        <dt>Driver</dt>
+        <dd>{{ application.first_name }} {{ application.last_name }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ application.email }}</dd>
+
+        <dt>Submitted</dt>
+        <dd>{{ application.submitted or '—' }}</dd>
+
+        <dt>Status</dt>
+        <dd><span class="status {{ application.state | lower }}">{{ application.state | capitalize }}</span></dd>
+      </dl>
+
+      <h2>Why they want to join</h2>
+      <p class="application-message">{{ application.app }}</p>
+
+      {% if application.state | lower == 'pending' %}
+      <form action="/sponsor/applications/{{ application.app_id }}/approve" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Approve Application</button>
+      </form>
+      {% endif %}
+
+      <p style="text-align: center;"><a href="/sponsor/applications">Back to Applications</a></p>
+    </main>
+  </div>
+</body>
+</html>

@@ -17,14 +17,18 @@ def validate_account(data, role):
     email = data.get('email', '')
     if len(email) > 100 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
         raise AccountValidationError('Enter a valid email address.')
-    minimum = 16 if role == 'Admin' else 15
-    if not minimum <= len(data.get('password', '')) <= 128:
-        raise AccountValidationError(f'Password must be {minimum}–128 characters.')
-    if data['password'] != data.get('confirm_password'):
+    password = data.get('password', '')
+    if not 8 <= len(password) <= 128:
+        raise AccountValidationError('Password must be 8–128 characters.')
+    if not any(c.isupper() for c in password):
+        raise AccountValidationError('Password must contain at least 1 uppercase letter.')
+    if not any(c.isdigit() for c in password):
+        raise AccountValidationError('Password must contain at least 1 number.')
+    if password != data.get('confirm_password'):
         raise AccountValidationError('Passwords do not match.')
 
-
-def create_account(data, role, *, allow_new_company=False):
+# driver_status lets a sponsor onboard a driver directly as 'Approved'; self-registration stays 'Pending'
+def create_account(data, role, *, allow_new_company=False, driver_status='Pending'):
     validate_account(data, role)
     company = data.get('company_name', '').strip()
     if company and (not allow_new_company or role != 'Sponsor'):
@@ -51,8 +55,8 @@ def create_account(data, role, *, allow_new_company=False):
                         (data['username'], data['email'], hashed, role))
             user_id = cur.lastrowid
             if role == 'Driver':
-                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, 'Pending', %s, %s)",
-                            (user_id, sponsor_id, data['first_name'], data['last_name']))
+                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, %s, %s, %s)",
+                            (user_id, sponsor_id, driver_status, data['first_name'], data['last_name']))
             elif role == 'Sponsor':
                 cur.execute('INSERT INTO SponsorUser (user_id, sponsor_id, first_name, last_name) VALUES (%s, %s, %s, %s)',
                             (user_id, sponsor_id, data['first_name'], data['last_name']))

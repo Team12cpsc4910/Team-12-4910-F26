@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, session, redirect
+from flask import Blueprint, request, render_template, session, redirect, g
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
@@ -122,7 +122,7 @@ def dashboard():
         points = 0
         history = []
         catalog = []
-       redemptions = []
+        redemptions = []
         approved = False
         dropped = False
         conn = None
