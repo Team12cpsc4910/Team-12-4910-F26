@@ -7,6 +7,9 @@ from routes.about import about_bp
 from routes.login import auth_bp
 from routes.accounts import accounts_bp
 from routes.applications import applications_bp
+from routes.drivers import drivers_bp
+from routes.company import company_bp
+from routes.rewards import rewards_bp, redemption_key
 
 app = Flask(__name__, template_folder='../frontend', static_folder='../frontend')
 
@@ -23,11 +26,15 @@ app.config.update(
     ).split(',')),
 )
 app.jinja_env.globals['csrf_token'] = csrf_token
+app.jinja_env.globals['redemption_key'] = redemption_key
 app.before_request(load_user)
 app.register_blueprint(about_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(accounts_bp)
 app.register_blueprint(applications_bp)
+app.register_blueprint(drivers_bp)
+app.register_blueprint(company_bp)
+app.register_blueprint(rewards_bp)
 
 @app.route('/')
 def home():
