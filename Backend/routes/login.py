@@ -122,7 +122,7 @@ def dashboard():
         points = 0
         history = []
         catalog = []
-       redemptions = []
+        redemptions = []
         approved = False
         dropped = False
         conn = None
