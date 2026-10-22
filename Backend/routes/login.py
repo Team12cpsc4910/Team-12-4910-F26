@@ -1,6 +1,8 @@
 from flask import Blueprint, request, render_template, session, redirect
 from werkzeug.security import check_password_hash
 from database import get_db_connection
+from security import login_required, check_csrf
+from routes.rewards import get_sponsor_catalog
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -120,7 +122,9 @@ def dashboard():
         points = 0
         history = []
         catalog = []
+       redemptions = []
         approved = False
+        dropped = False
         conn = None
 
         try:
@@ -133,10 +137,8 @@ def dashboard():
                            d.sponsor_id,
                            d.application_status
                     FROM DriverUser d
-                    JOIN UserAccount u
-                        ON d.user_id = u.user_id
-                    WHERE u.username = %s
-                """, (current_user,))
+                    WHERE d.user_id = %s
+                """, (session.get('user_id', 0),))
 
                 driver = cur.fetchone()
 
@@ -164,11 +166,21 @@ def dashboard():
 
                     history = cur.fetchall()
 
+                    cur.execute("""
+                        SELECT redemption_id, product_name, points_spent,
+                               status, redeemed_at, fulfilled_at
+                        FROM RewardRedemption WHERE driver_id = %s
+                        ORDER BY redeemed_at DESC, redemption_id DESC
+                    """, (driver['driver_id'],))
+                    redemptions = cur.fetchall()
+
                     approved = driver['application_status'] == 'Approved'
+                    dropped = driver['application_status'] == 'Dropped'
 
                     if approved:
                         cur.execute("""
-                            SELECT product_name,
+                            SELECT product_id,
+                                   product_name,
                                    description,
                                    point_cost,
                                    Availability AS available
@@ -191,7 +203,9 @@ def dashboard():
             points=points,
             history=history,
             catalog=catalog,
-            approved=approved
+            redemptions=redemptions,
+            approved=approved,
+            dropped=dropped
         )
 
     else:
@@ -205,28 +219,103 @@ def profile():
         return redirect('/')
 
     current_user = session['username']
+    user_type = session.get('user_type')
 
     conn = get_db_connection()
 
     try:
         with conn.cursor() as cur:
+
             if request.method == 'POST':
-                new_email = request.form.get('email')
+                new_email = request.form.get('email', '').strip()
+                first_name = request.form.get('first_name', '').strip()
+                last_name = request.form.get('last_name', '').strip()
 
-                if new_email:
+                cur.execute("""
+                    UPDATE UserAccount
+                    SET email = %s
+                    WHERE username = %s
+                """, (new_email, current_user))
+
+                if user_type == 'Admin':
                     cur.execute("""
-                        UPDATE UserAccount
-                        SET email = %s
-                        WHERE username = %s
-                    """, (new_email, current_user))
+                        UPDATE AdminUser
+                        SET first_name = %s,
+                            last_name = %s
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
 
-                    conn.commit()
+                elif user_type == 'Sponsor':
+                    cur.execute("""
+                        UPDATE SponsorUser
+                        SET first_name = %s,
+                            last_name = %s
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
 
-            cur.execute("""
-                SELECT username, email, user_type
-                FROM UserAccount
-                WHERE username = %s
-            """, (current_user,))
+                elif user_type == 'Driver':
+                    cur.execute("""
+                        UPDATE DriverUser
+                        SET first_name = %s,
+                            last_name = %s
+                        WHERE user_id = (
+                            SELECT user_id
+                            FROM UserAccount
+                            WHERE username = %s
+                        )
+                    """, (first_name, last_name, current_user))
+
+                conn.commit()
+
+            if user_type == 'Admin':
+                cur.execute("""
+                    SELECT
+                        u.username,
+                        u.email,
+                        u.user_type,
+                        a.first_name,
+                        a.last_name
+                    FROM UserAccount u
+                    JOIN AdminUser a
+                        ON u.user_id = a.user_id
+                    WHERE u.username = %s
+                """, (current_user,))
+
+            elif user_type == 'Sponsor':
+                cur.execute("""
+                    SELECT
+                        u.username,
+                        u.email,
+                        u.user_type,
+                        s.first_name,
+                        s.last_name
+                    FROM UserAccount u
+                    JOIN SponsorUser s
+                        ON u.user_id = s.user_id
+                    WHERE u.username = %s
+                """, (current_user,))
+
+            elif user_type == 'Driver':
+                cur.execute("""
+                    SELECT
+                        u.username,
+                        u.email,
+                        u.user_type,
+                        d.first_name,
+                        d.last_name
+                    FROM UserAccount u
+                    JOIN DriverUser d
+                        ON u.user_id = d.user_id
+                    WHERE u.username = %s
+                """, (current_user,))
 
             user = cur.fetchone()
 
