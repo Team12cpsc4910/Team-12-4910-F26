@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, session, redirect, g
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
+from routes.rewards import get_sponsor_catalog
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -121,6 +122,7 @@ def dashboard():
         points = 0
         history = []
         catalog = []
+       redemptions = []
         approved = False
         dropped = False
         conn = None
@@ -135,10 +137,8 @@ def dashboard():
                            d.sponsor_id,
                            d.application_status
                     FROM DriverUser d
-                    JOIN UserAccount u
-                        ON d.user_id = u.user_id
-                    WHERE u.username = %s
-                """, (current_user,))
+                    WHERE d.user_id = %s
+                """, (session.get('user_id', 0),))
 
                 driver = cur.fetchone()
 
@@ -166,12 +166,21 @@ def dashboard():
 
                     history = cur.fetchall()
 
+                    cur.execute("""
+                        SELECT redemption_id, product_name, points_spent,
+                               status, redeemed_at, fulfilled_at
+                        FROM RewardRedemption WHERE driver_id = %s
+                        ORDER BY redeemed_at DESC, redemption_id DESC
+                    """, (driver['driver_id'],))
+                    redemptions = cur.fetchall()
+
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
 
                     if approved:
                         cur.execute("""
-                            SELECT product_name,
+                            SELECT product_id,
+                                   product_name,
                                    description,
                                    point_cost,
                                    Availability AS available
@@ -194,6 +203,7 @@ def dashboard():
             points=points,
             history=history,
             catalog=catalog,
+            redemptions=redemptions,
             approved=approved,
             dropped=dropped
         )
