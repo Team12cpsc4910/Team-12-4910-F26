@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sponsor Users</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Sponsor Users</h1>
+      <p style="text-align: center;">Every sponsor user account. Select a user to view their information.</p>
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Company</th>
+            <th>Username</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if sponsor_users %}
+            {% for user in sponsor_users %}
+            <tr>
+              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.sponsor_name }}</td>
+              <td>{{ user.username }}</td>
+              <td>
+                {% if user.account_locked %}
+                  <span class="status dropped">Locked</span>
+                {% else %}
+                  <span class="status approved">Active</span>
+                {% endif %}
+              </td>
+              <td><a href="/admin/sponsor-users/{{ user.sponsor_user_id }}">View</a></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no sponsor users yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

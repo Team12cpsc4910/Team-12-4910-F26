@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sponsor User</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>{{ sponsor_user.first_name }} {{ sponsor_user.last_name }}</h1>
+
+      <dl>
+        <dt>Company</dt>
+        <dd>{{ sponsor_user.sponsor_name }}</dd>
+
+        <dt>Username</dt>
+        <dd>{{ sponsor_user.username }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ sponsor_user.email }}</dd>
+
+        <dt>Status</dt>
+        <dd>
+          {% if sponsor_user.account_locked %}
+            <span class="status dropped">Locked</span>
+          {% else %}
+            <span class="status approved">Active</span>
+          {% endif %}
+        </dd>
+
+        <dt>Failed Logins</dt>
+        <dd>{{ sponsor_user.failed_logins }}</dd>
+      </dl>
+
+      <p style="text-align: center;"><a href="/admin/sponsor-users">Back to Sponsor Users</a></p>
+    </main>
+  </div>
+</body>
+</html>
