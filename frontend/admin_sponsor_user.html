@@ -17,6 +17,10 @@
     <main>
       <h1>{{ sponsor_user.first_name }} {{ sponsor_user.last_name }}</h1>
 
+      {% if updated %}
+        <p class="success-message">Sponsor user updated.</p>
+      {% endif %}      
+
       <dl>
         <dt>Company</dt>
         <dd>{{ sponsor_user.sponsor_name }}</dd>
@@ -39,6 +43,10 @@
         <dt>Failed Logins</dt>
         <dd>{{ sponsor_user.failed_logins }}</dd>
       </dl>
+
+      <form action="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}/edit" method="get">
+        <button type="submit">Edit Sponsor User</button>
+      </form>      
 
       <p style="text-align: center;"><a href="/admin/sponsor-users">Back to Sponsor Users</a></p>
     </main>
