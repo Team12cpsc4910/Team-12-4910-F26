@@ -134,6 +134,12 @@ def submit_application(username, sponsor_id, message):
                 INSERT INTO DriverApp (driver_id, sponsor_id, app)
                 VALUES (%s, %s, %s)
             """, (driver['driver_id'], int(sponsor_id), message))
+            # An account becomes Pending only after a real application is submitted.
+            # Preserve Approved/Dropped if the driver already has sponsor history.
+            cur.execute("""
+                UPDATE DriverUser SET application_status = 'Pending'
+                WHERE driver_id = %s AND application_status IN ('Not Applied', 'Rejected')
+            """, (driver['driver_id'],))
         conn.commit()
     except ApplicationError:
         raise
@@ -207,6 +213,31 @@ def get_sponsor_applications(username):
             conn.close()
     return applications
 
+# Allow the sponsor to see decisions after they disappear from Pending.
+def get_reviewed_sponsor_applications(username):
+    applications = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            sponsor_id = find_sponsor_id(cur, username)
+            if sponsor_id:
+                cur.execute("""
+                    SELECT a.app_id, d.first_name, d.last_name, a.state,
+                           (SELECT MAX(l.datetime) FROM DriverAppLog l
+                            WHERE l.app_id = a.app_id) AS decided
+                    FROM DriverApp a
+                    JOIN DriverUser d ON a.driver_id = d.driver_id
+                    WHERE a.sponsor_id = %s AND LOWER(a.state) IN ('approved', 'rejected')
+                    ORDER BY a.app_id DESC LIMIT 50
+                """, (sponsor_id,))
+                applications = cur.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+    return applications
 
 # View Application: one application with the driver's message, or None if it
 # doesn't exist or was sent to a different sponsor company.
@@ -280,7 +311,7 @@ def reject_application(username, app_id, reason):
             if not sponsor_id:
                 return False
             cur.execute("""
-                SELECT state FROM DriverApp
+                SELECT driver_id, state FROM DriverApp
                 WHERE app_id = %s AND sponsor_id = %s
                 FOR UPDATE
             """, (app_id, sponsor_id))
@@ -309,6 +340,18 @@ def reject_application(username, app_id, reason):
                             (reason, logged['app_log_id']))
             else:
                 cur.execute('INSERT INTO DriverAppLog (app_id, reason) VALUES (%s, %s)', (app_id, reason))
+
+            # When the last pending application is rejected, stop showing the
+            # driver as Pending. Never overwrite a separate Approved/Dropped status.
+            cur.execute("""
+                SELECT app_id FROM DriverApp
+                WHERE driver_id = %s AND LOWER(state) = 'pending' LIMIT 1
+            """, (application['driver_id'],))
+            if not cur.fetchone():
+                cur.execute("""
+                    UPDATE DriverUser SET application_status = 'Rejected'
+                    WHERE driver_id = %s AND application_status = 'Pending'
+                """, (application['driver_id'],))
         conn.commit()
         return True
     except Exception:
@@ -327,6 +370,7 @@ def sponsor_applications():
 
     return render_template('sponsor_applications.html',
                         pending=get_sponsor_applications(session['username']),
+                        reviewed=get_reviewed_sponsor_applications(session['username']),
                         approved=request.args.get('approved') == '1',
                         rejected=request.args.get('rejected') == '1')
 
