@@ -53,6 +53,42 @@
       {% endif %}
 
       <p style="text-align: center;"><a href="/sponsor/applications">Back to Applications</a></p>
+
+      <h2>Reviewed Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Reviewed</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if reviewed %}
+            {% for app in reviewed %}
+            <tr>
+              <td>{{ app.first_name }} {{ app.last_name }}</td>
+              <td>{{ app.decided or '—' }}</td>
+              <td>
+                <span class="status {{ app.state | lower }}">
+                  {{ app.state | capitalize }}
+                </span>
+              </td>
+              <td>
+                <a href="/sponsor/applications/{{ app.app_id }}">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">
+                No reviewed applications yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </main>
   </div>
 </body>
