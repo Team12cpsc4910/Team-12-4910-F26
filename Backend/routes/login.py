@@ -125,6 +125,7 @@ def dashboard():
         redemptions = []
         approved = False
         dropped = False
+        rejected = False
         conn = None
 
         try:
@@ -176,6 +177,7 @@ def dashboard():
 
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
+                    rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
                         cur.execute("""
@@ -205,7 +207,8 @@ def dashboard():
             catalog=catalog,
             redemptions=redemptions,
             approved=approved,
-            dropped=dropped
+            dropped=dropped,
+            rejected=rejected
         )
 
     else:
