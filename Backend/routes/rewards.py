@@ -41,6 +41,9 @@ def redeem_reward(user_id, product_id, request_key):
 
     conn = get_db_connection()
     try:
+        # Start a database transaction
+        conn.begin()
+    
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT driver_id, sponsor_id, points, application_status
@@ -60,6 +63,10 @@ def redeem_reward(user_id, product_id, request_key):
             if existing:
                 if existing['product_id'] != product_id:
                     raise RedemptionError('This redemption request belongs to another reward.')
+            
+                # Release locks because this purchase already exists
+                conn.rollback()
+            
                 return existing['redemption_id']
 
             # Match the product against the sponsor recorded for THIS driver,
