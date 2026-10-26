@@ -46,6 +46,33 @@
           {% endif %}
         </tbody>
       </table>
+      <h2>Rejected Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Sponsor</th>
+            <th>Rejected</th>
+            <th>Status</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rejected %}
+            {% for app in rejected %}
+            <tr>
+              <td>{{ app.sponsor_name }}</td>
+              <td>{{ app.decided or '—' }}</td>
+              <td><span class="status rejected">{{ app.state | capitalize }}</span></td>
+              <td>{{ app.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No rejected applications.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>      
     </main>
   </div>
 </body>

@@ -23,6 +23,10 @@
         <p class="success-message">Application approved. The driver has been added to your program.</p>
       {% endif %}
 
+      {% if rejected %}
+        <p class="success-message">Application rejected. The driver can see your reason.</p>
+      {% endif %}
+
       <h2>Pending Applications</h2>
       <table class="catalog-table">
         <thead>

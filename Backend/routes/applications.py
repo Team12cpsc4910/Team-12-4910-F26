@@ -7,6 +7,7 @@ applications_bp = Blueprint('applications', __name__)
 
 # DriverApp.app is VARCHAR(255), so the driver's message has to fit in it
 MAX_APPLICATION_LENGTH = 255
+MAX_REJECT_REASON_LENGTH = 255
 
 
 class ApplicationError(ValueError):
@@ -39,6 +40,32 @@ def get_pending_applications(username):
             conn.close()
     return applications
 
+def get_rejected_applications(username):
+    applications = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.app_id, s.sponsor_name, a.state,
+                       (SELECT MAX(l.datetime) FROM DriverAppLog l WHERE l.app_id = a.app_id) AS decided,
+                       (SELECT l.reason FROM DriverAppLog l WHERE l.app_id = a.app_id
+                        ORDER BY l.app_log_id DESC LIMIT 1) AS reason
+                FROM DriverApp a
+                JOIN DriverUser d ON a.driver_id = d.driver_id
+                JOIN UserAccount u ON d.user_id = u.user_id
+                JOIN Sponsor s ON a.sponsor_id = s.sponsor_id
+                WHERE u.username = %s AND LOWER(a.state) = 'rejected'
+                ORDER BY a.app_id DESC
+            """, (username,))
+            applications = cur.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+    return applications
+
 
 @applications_bp.route('/applications')
 def applications():
@@ -46,7 +73,8 @@ def applications():
         return redirect('/')
 
     return render_template('applications.html',
-                           pending=get_pending_applications(session['username']))
+pending=get_pending_applications(session['username']),
+rejected=get_rejected_applications(session['username']))
 
 
 # Sponsor dropdown for the application form; an empty list just shows "no sponsors" instead of crashing
@@ -238,6 +266,57 @@ def approve_application(username, app_id):
     finally:
         conn.close()
 
+def reject_application(username, app_id, reason):
+    reason = (reason or '').strip()
+    if not reason:
+        raise ApplicationError('Please enter a reason for rejecting this application.')
+    if len(reason) > MAX_REJECT_REASON_LENGTH:
+        raise ApplicationError(f'The reason must be {MAX_REJECT_REASON_LENGTH} characters or fewer.')
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            sponsor_id = find_sponsor_id(cur, username)
+            if not sponsor_id:
+                return False
+            cur.execute("""
+                SELECT state FROM DriverApp
+                WHERE app_id = %s AND sponsor_id = %s
+                FOR UPDATE
+            """, (app_id, sponsor_id))
+            application = cur.fetchone()
+            if not application:
+                return False
+            if application['state'].lower() != 'pending':
+                raise ApplicationError(f"This application has already been {application['state'].lower()}.")
+
+            cur.execute('SELECT COALESCE(MAX(app_log_id), 0) AS last_id FROM DriverAppLog WHERE app_id = %s',
+                        (app_id,))
+            last_id = cur.fetchone()['last_id']
+
+            cur.execute("UPDATE DriverApp SET state = 'rejected' WHERE app_id = %s", (app_id,))
+
+            # The log_updated_app trigger (if installed) logs a generic "App updated" row.
+            # Put the sponsor's reason on that row; otherwise write the log row here.
+            cur.execute("""
+                SELECT app_log_id FROM DriverAppLog
+                WHERE app_id = %s AND app_log_id > %s
+                ORDER BY app_log_id DESC LIMIT 1
+            """, (app_id, last_id))
+            logged = cur.fetchone()
+            if logged:
+                cur.execute('UPDATE DriverAppLog SET reason = %s WHERE app_log_id = %s',
+                            (reason, logged['app_log_id']))
+            else:
+                cur.execute('INSERT INTO DriverAppLog (app_id, reason) VALUES (%s, %s)', (app_id, reason))
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 
 @applications_bp.route('/sponsor/applications')
 def sponsor_applications():
@@ -247,8 +326,9 @@ def sponsor_applications():
         return redirect('/dashboard')
 
     return render_template('sponsor_applications.html',
-                           pending=get_sponsor_applications(session['username']),
-                           approved=request.args.get('approved') == '1')
+                        pending=get_sponsor_applications(session['username']),
+                        approved=request.args.get('approved') == '1',
+                        rejected=request.args.get('rejected') == '1')
 
 
 @applications_bp.route('/sponsor/applications/<int:app_id>')
@@ -279,3 +359,21 @@ def approve_sponsor_application(app_id):
         application = get_sponsor_application(session['username'], app_id)
         return render_template('sponsor_application.html', application=application, error=str(exc)), 409
     return redirect('/sponsor/applications?approved=1')
+
+@applications_bp.route('/sponsor/applications/<int:app_id>/reject', methods=['POST'])
+def reject_sponsor_application(app_id):
+    if 'username' not in session:
+        return redirect('/')
+    if not is_sponsor_session():
+        return redirect('/dashboard')
+    check_csrf()
+
+    reason = request.form.get('reason', '')
+    try:
+        if not reject_application(session['username'], app_id, reason):
+            abort(404)
+    except ApplicationError as exc:
+        application = get_sponsor_application(session['username'], app_id)
+        return render_template('sponsor_application.html', application=application,
+                               error=str(exc), reason=reason), 400
+    return redirect('/sponsor/applications?rejected=1')

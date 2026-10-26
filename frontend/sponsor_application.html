@@ -44,6 +44,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit">Approve Application</button>
       </form>
+      <form action="/sponsor/applications/{{ application.app_id }}/reject" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="reason">Reason for rejection</label>
+        <textarea id="reason" name="reason" maxlength="255" required>{{ reason or '' }}</textarea>
+        <button type="submit">Reject Application</button>
+      </form>
       {% endif %}
 
       <p style="text-align: center;"><a href="/sponsor/applications">Back to Applications</a></p>
