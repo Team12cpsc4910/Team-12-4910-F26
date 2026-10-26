@@ -26,9 +26,10 @@ def validate_account(data, role):
         raise AccountValidationError('Password must contain at least 1 number.')
     if password != data.get('confirm_password'):
         raise AccountValidationError('Passwords do not match.')
-
-# driver_status lets a sponsor onboard a driver directly as 'Approved'; self-registration stays 'Pending'
-def create_account(data, role, *, allow_new_company=False, driver_status='Pending'):
+        
+# Driver self-registration does not mean an application was submitted.
+# Sponsors can still create already-approved drivers directly.
+def create_account(data, role, *, allow_new_company=False, driver_status='Not Applied'):
     validate_account(data, role)
     company = data.get('company_name', '').strip()
     if company and (not allow_new_company or role != 'Sponsor'):

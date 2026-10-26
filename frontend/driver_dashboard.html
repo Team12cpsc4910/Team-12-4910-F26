@@ -51,8 +51,10 @@
       <h2>My Sponsor's Catalog</h2>
       {% if dropped %}
       <p class="catalog-empty">You've been dropped from your sponsor's program, so their catalog is no longer available. You can apply to a sponsor from the Applications tab.</p>
+      {% elif rejected %}
+      <p class="catalog-empty">Your application was rejected. You can view the reason and apply again on the Applications page.</p>
       {% elif not approved %}
-      <p class="catalog-empty">Your catalog will be available once your sponsor approves your application.</p>
+      <p class="catalog-empty">Your catalog will be available once a sponsor approves your application.</p>
       {% else %}
       <table class="catalog-table">
         <thead>
