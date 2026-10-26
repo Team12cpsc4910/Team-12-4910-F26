@@ -35,6 +35,7 @@ def get_sponsor_drivers(username):
                     SELECT d.driver_id, d.first_name, d.last_name, d.points, d.application_status
                     FROM DriverUser d
                     WHERE d.sponsor_id = %s
+                        AND d.application_status IN ('Approved', 'Dropped')
                     ORDER BY d.last_name, d.first_name
                 """, (sponsor_id,))
                 drivers = cur.fetchall()
@@ -62,6 +63,7 @@ def get_sponsor_driver(username, driver_id):
                 JOIN UserAccount u ON d.user_id = u.user_id
                 JOIN Sponsor s ON d.sponsor_id = s.sponsor_id
                 WHERE d.driver_id = %s AND d.sponsor_id = %s
+                    AND d.application_status IN ('Approved', 'Dropped')
             """, (driver_id, sponsor_id))
             driver = cur.fetchone()
             if not driver:
