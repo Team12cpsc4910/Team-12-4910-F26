@@ -117,7 +117,7 @@ class FakeConnection:
         self.rolled_back = False
         
     def cursor(self):
-    return FakeCursor(self)
+        return FakeCursor(self)
 
     def begin(self):
         self.transactions_started += 1
