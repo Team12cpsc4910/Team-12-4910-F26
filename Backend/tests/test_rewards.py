@@ -110,6 +110,9 @@ class FakeConnection:
 
     def cursor(self):
         return FakeCursor(self)
+        
+    def begin(self):
+    self.before = copy.deepcopy(self.data)
 
     def commit(self):
         self.committed = True
