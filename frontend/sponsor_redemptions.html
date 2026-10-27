@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reward Orders</title>
+    <link rel="stylesheet" href="/style.css?v=5">
+</head>
+
+<body>
+    <div class="container">
+
+        <nav>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/sponsor/applications">Applications</a>
+            <a href="/logout">Log Out</a>
+        </nav>
+
+        <main>
+            <h1>Reward Orders</h1>
+
+            {% for category, message in get_flashed_messages(with_categories=true) %}
+            <p role="status">{{ message }}</p>
+            {% endfor %}
+
+            <table class="catalog-table">
+
+                <thead>
+                    <tr>
+                        <th>Driver</th>
+                        <th>Product</th>
+                        <th>Points</th>
+                        <th>Status</th>
+                        <th>Purchased</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for order in orders %}
+
+                    <tr>
+                        <td>
+                            {{ order.first_name }}
+                            {{ order.last_name }}
+                        </td>
+
+                        <td>{{ order.product_name }}</td>
+                        <td>{{ order.points_spent }}</td>
+                        <td>{{ order.status }}</td>
+                        <td>{{ order.redeemed_at }}</td>
+
+                        <td>
+                            {% if order.status == 'Requested' %}
+
+                            <form method="POST"
+                                  action="/sponsor/redemptions/{{ order.redemption_id }}/fulfill">
+
+                                <input type="hidden"
+                                       name="csrf_token"
+                                       value="{{ csrf_token() }}">
+
+                                <button type="submit">
+                                    Mark Fulfilled
+                                </button>
+
+                            </form>
+
+                            {% else %}
+
+                                {{ order.fulfilled_at or 'Fulfilled' }}
+
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    {% else %}
+
+                    <tr>
+                        <td colspan="6" class="catalog-empty">
+                            No reward orders yet.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </main>
+    </div>
+</body>
+</html>
