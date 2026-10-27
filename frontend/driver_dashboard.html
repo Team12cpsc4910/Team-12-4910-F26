@@ -14,6 +14,9 @@
     </nav>
     <main>
       <h1 style="text-align: center;">Driver Dashboard</h1>
+      {% for category, message in get_flashed_messages(with_categories=true) %}
+      <p role="status">{{ message }}</p>
+      {% endfor %}
       <p style="text-align: center;">Welcome, Driver. Your points and catalog rewards will appear here.</p>
 
       <h2>Points Balance</h2>
@@ -57,36 +60,103 @@
       <p class="catalog-empty">Your catalog will be available once a sponsor approves your application.</p>
       {% else %}
       <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Price (points)</th>
-            <th>Availability</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if catalog %}
-            {% for item in catalog %}
-            <tr>
-              <td>{{ item.product_name }}</td>
-              <td>{{ item.point_cost }}</td>
-              <td>
-                {% if item.available %}
-                  <span class="status in-stock">In Stock</span>
-                {% else %}
-                  <span class="status out-of-stock">Out of Stock</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="3" class="catalog-empty">Your sponsor hasn't added any products yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
+          <thead>
+              <tr>
+                  <th>Product</th>
+                  <th>Price (points)</th>
+                  <th>Availability</th>
+                  <th>Redeem</th>
+              </tr>
+          </thead>
+      
+          <tbody>
+              {% if catalog %}
+                  {% for item in catalog %}
+                  <tr>
+                      <td>{{ item.product_name }}</td>
+                      <td>{{ item.point_cost }}</td>
+      
+                      <td>
+                          {% if item.available %}
+                              <span class="status in-stock">In Stock</span>
+                          {% else %}
+                              <span class="status out-of-stock">Out of Stock</span>
+                          {% endif %}
+                      </td>
+      
+                      <td>
+                          {% if item.available and points >= item.point_cost %}
+      
+                          <form method="POST"
+                                action="/rewards/{{ item.product_id }}/redeem"
+                                onsubmit="return confirm('Spend {{ item.point_cost }} points on this reward?');">
+      
+                              <input type="hidden"
+                                     name="csrf_token"
+                                     value="{{ csrf_token() }}">
+      
+                              <input type="hidden"
+                                     name="redemption_key"
+                                     value="{{ redemption_key() }}">
+      
+                              <button type="submit">Redeem</button>
+                          </form>
+      
+                          {% elif not item.available %}
+      
+                              Unavailable
+      
+                          {% else %}
+      
+                              Not enough points
+      
+                          {% endif %}
+                      </td>
+                  </tr>
+                  {% endfor %}
+      
+              {% else %}
+                  <tr>
+                      <td colspan="4" class="catalog-empty">
+                          Your sponsor hasn't added any products yet.
+                      </td>
+                  </tr>
+              {% endif %}
+          </tbody>
       </table>
       {% endif %}
+      <h2>My Reward Orders</h2>
+
+      <table class="catalog-table">
+          <thead>
+              <tr>
+                  <th>Reward</th>
+                  <th>Points Spent</th>
+                  <th>Status</th>
+                  <th>Purchased</th>
+              </tr>
+          </thead>
+      
+          <tbody>
+              {% if redemptions %}
+                  {% for order in redemptions %}
+                  <tr>
+                      <td>{{ order.product_name }}</td>
+                      <td>{{ order.points_spent }}</td>
+                      <td>{{ order.status }}</td>
+                      <td>{{ order.redeemed_at }}</td>
+                  </tr>
+                  {% endfor %}
+      
+              {% else %}
+                  <tr>
+                      <td colspan="4" class="catalog-empty">
+                          No reward orders yet.
+                      </td>
+                  </tr>
+              {% endif %}
+          </tbody>
+      </table>
     </main>
   </div>
 </body>
