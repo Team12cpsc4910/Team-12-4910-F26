@@ -115,9 +115,10 @@ def dashboard():
     elif user_type == "Sponsor":
         return render_template(
             'sponsor_dashboard.html',
-            report=get_sponsor_point_report(current_user)
+            report=get_sponsor_point_report(current_user),
+            catalog=get_sponsor_catalog(session.get('user_id'))
         )
-
+        
     elif user_type == "Driver":
         points = 0
         history = []
