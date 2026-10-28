@@ -34,6 +34,39 @@
         <dd>{{ driver.sponsor_name }}</dd>
       </dl>
 
+      <h2>Edit Info</h2>
+      {% if info_updated %}
+        <p class="success-message">Driver info updated.</p>
+      {% endif %}
+      {% if info_error %}
+        <p class="error-message">{{ info_error }}</p>
+      {% endif %}
+
+      {% set info = info_values or {} %}
+      <form action="/sponsor/drivers/{{ driver.driver_id }}/info" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label for="first_name">First Name:</label>
+          <input type="text" id="first_name" name="first_name" maxlength="50"
+                 value="{{ info.get('first_name', driver.first_name) }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Last Name:</label>
+          <input type="text" id="last_name" name="last_name" maxlength="50"
+                 value="{{ info.get('last_name', driver.last_name) }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" maxlength="100"
+                 value="{{ info.get('email', driver.email) }}" required>
+        </div>
+
+        <button type="submit">Save Info</button>
+      </form>
+
       <h2>Status</h2>
       <dl>
         <dt>Application Status</dt>

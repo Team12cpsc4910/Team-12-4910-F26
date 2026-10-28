@@ -7,16 +7,21 @@ class AccountValidationError(ValueError):
     pass
 
 
-def validate_account(data, role):
-    if role not in ('Driver', 'Sponsor', 'Admin'):
-        raise AccountValidationError('Choose a valid account type.')
-    if not re.fullmatch(r'[A-Za-z0-9_.-]{3,50}', data.get('username', '')):
-        raise AccountValidationError('Username must be 3–50 letters, numbers, periods, underscores, or hyphens.')
+# Name and email rules, shared by account creation and by sponsors editing a driver's info
+def validate_name_and_email(data):
     if not all(1 <= len(data.get(k, '')) <= 50 for k in ('first_name','last_name')):
         raise AccountValidationError('Enter first and last names of up to 50 characters each.')
     email = data.get('email', '')
     if len(email) > 100 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
         raise AccountValidationError('Enter a valid email address.')
+
+
+def validate_account(data, role):
+    if role not in ('Driver', 'Sponsor', 'Admin'):
+        raise AccountValidationError('Choose a valid account type.')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]{3,50}', data.get('username', '')):
+        raise AccountValidationError('Username must be 3–50 letters, numbers, periods, underscores, or hyphens.')
+    validate_name_and_email(data)
     password = data.get('password', '')
     if not 8 <= len(password) <= 128:
         raise AccountValidationError('Password must be 8–128 characters.')

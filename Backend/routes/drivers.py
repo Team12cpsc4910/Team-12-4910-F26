@@ -1,6 +1,7 @@
+import pymysql
 from flask import Blueprint, render_template, request, session, redirect, abort
 
-from accounts import create_account, AccountValidationError
+from accounts import create_account, validate_name_and_email, AccountValidationError
 from database import get_db_connection
 from routes.applications import is_sponsor_session, find_sponsor_id
 from security import check_csrf
@@ -257,6 +258,51 @@ def drop_driver(username, driver_id):
         conn.close()
 
 
+# Edit Driver Info: a sponsor corrects a driver's name or email. Username, password, points, and
+# status aren't editable here. Returns False if the driver isn't one the sponsor can view.
+def update_driver_info(username, driver_id, values):
+    validate_name_and_email(values)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            sponsor_id = find_sponsor_id(cur, username)
+            if not sponsor_id:
+                return False
+            # Same drivers the profile page shows: this sponsor's approved or dropped drivers
+            cur.execute("""
+                SELECT user_id FROM DriverUser
+                WHERE driver_id = %s AND sponsor_id = %s
+                    AND application_status IN ('Approved', 'Dropped')
+                FOR UPDATE
+            """, (driver_id, sponsor_id))
+            driver = cur.fetchone()
+            if not driver:
+                return False
+
+            cur.execute('SELECT user_id FROM UserAccount WHERE LOWER(email) = LOWER(%s) AND user_id <> %s',
+                        (values['email'], driver['user_id']))
+            if cur.fetchone():
+                raise AccountValidationError('That email is already used by another account.')
+
+            cur.execute('UPDATE DriverUser SET first_name = %s, last_name = %s WHERE driver_id = %s',
+                        (values['first_name'], values['last_name'], driver_id))
+            cur.execute('UPDATE UserAccount SET email = %s WHERE user_id = %s',
+                        (values['email'], driver['user_id']))
+        conn.commit()
+        return True
+    except pymysql.IntegrityError as exc:
+        conn.rollback()
+        if exc.args[0] == 1062:
+            raise AccountValidationError('That email is already used by another account.') from None
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 @drivers_bp.route('/sponsor/drivers/<int:driver_id>')
 def sponsor_driver_profile(driver_id):
     if 'username' not in session:
@@ -272,7 +318,29 @@ def sponsor_driver_profile(driver_id):
     return render_driver_profile(driver, history,
                                  points_added=points_added if points_added.isdigit() else None,
                                  points_deducted=points_deducted if points_deducted.isdigit() else None,
-                                 dropped=request.args.get('dropped') == '1')
+                                 dropped=request.args.get('dropped') == '1',
+                                 info_updated=request.args.get('updated') == '1')
+
+
+@drivers_bp.route('/sponsor/drivers/<int:driver_id>/info', methods=['POST'])
+def update_sponsor_driver_info(driver_id):
+    if 'username' not in session:
+        return redirect('/')
+    if not is_sponsor_session():
+        return redirect('/dashboard')
+    check_csrf()
+
+    values = {k: request.form.get(k, '').strip() for k in ('first_name', 'last_name', 'email')}
+    values['email'] = values['email'].lower()
+    try:
+        if not update_driver_info(session['username'], driver_id, values):
+            abort(404)
+    except AccountValidationError as exc:
+        driver, history = get_sponsor_driver(session['username'], driver_id)
+        if not driver:
+            abort(404)
+        return render_driver_profile(driver, history, info_values=values, info_error=str(exc)), 400
+    return redirect(f'/sponsor/drivers/{driver_id}?updated=1')
 
 
 @drivers_bp.route('/sponsor/drivers/<int:driver_id>/drop', methods=['POST'])
