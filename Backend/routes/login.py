@@ -32,7 +32,7 @@ def login():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT user_id, username, password_hash, user_type
+                SELECT user_id, username, password_hash, user_type, account_locked
                 FROM UserAccount
                 WHERE username = %s
             """, (username,))
@@ -43,6 +43,10 @@ def login():
         conn.close()
 
     if user and check_password_hash(user['password_hash'], password):
+        # Checked after the password so a wrong guess can't reveal which accounts are deactivated
+        if user['account_locked']:
+            return "This account has been deactivated or locked. Please contact your sponsor or an administrator."
+
         session['user_id'] = user['user_id']
         session['username'] = user['username']
         session['user_type'] = user['user_type']

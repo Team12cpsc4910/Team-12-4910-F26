@@ -46,6 +46,57 @@
           <dt>Point Value</dt>
           <dd>${{ company.point_value }} per point</dd>
         </dl>
+
+        <h2>Sponsor Users</h2>
+        <p>Everyone with a sponsor login for your company. Deactivate a former employee's login so they can no longer sign in.</p>
+
+        {% if deactivated %}
+          <p class="success-message">Login deactivated. That user can no longer sign in.</p>
+        {% endif %}
+        {% if users_error %}
+          <p class="error-message">{{ users_error }}</p>
+        {% endif %}
+
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.username }}</td>
+              <td>
+                {% if user.account_locked %}
+                  <span class="status out-of-stock">Deactivated</span>
+                {% else %}
+                  <span class="status in-stock">Active</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if user.sponsor_user_id == my_sponsor_user_id %}
+                  (You)
+                {% elif not user.account_locked %}
+                  <form action="/sponsor/company/users/{{ user.sponsor_user_id }}/deactivate" method="POST"
+                        onsubmit="return confirm('Deactivate this login? They will no longer be able to sign in.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="danger">Deactivate</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No sponsor users found for your company.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       {% else %}
         <p class="catalog-empty">Your account isn't linked to a sponsor company.</p>
       {% endif %}
