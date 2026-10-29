@@ -189,6 +189,7 @@ def dashboard():
                             SELECT product_id,
                                    product_name,
                                    description,
+                                   image_url,
                                    point_cost,
                                    Availability AS available
                             FROM ProductCatalog
