@@ -10,116 +10,30 @@
     <nav>
       <a href="/sponsor/drivers">Drivers</a>
       <a href="/sponsor/applications">Applications</a>
-      <a href="/sponsor/redemptions">Reward Orders</a>
       <a href="/sponsor/company">Company</a>
       <a href="/profile">My Profile</a>
       <a href="/logout">Log Out</a>
     </nav>
     <main>
       <h1 style="text-align: center;">Sponsor Dashboard</h1>
-      {% for category, message in get_flashed_messages(with_categories=true) %}
-      <p role="status">{{ message }}</p>
-      {% endfor %}
       <p style="text-align: center;">Welcome, Sponsor. Your product catalog and driver reports will appear here.</p>
 
       <!-- Product catalog: Price (points) column shows product price in driver points; Availability column shows current stock status -->
       <h2>Product Catalog</h2>
-
       <table class="catalog-table">
-          <thead>
-              <tr>
-                  <th>Product</th>
-                  <th>Price (points)</th>
-                  <th>Availability</th>
-                  <th>Action</th>
-              </tr>
-          </thead>
-      
-          <tbody>
-              {% if catalog %}
-                  {% for item in catalog %}
-                  <tr>
-                      <td>
-                          {% if item.image_url %}
-                              <img
-                                  src="{{ item.image_url }}"
-                                  alt=""
-                                  width="75"
-                                  loading="lazy"
-                                  style="vertical-align:middle; margin-right:8px;"
-                              >
-                          {% endif %}
-                      
-                          {{ item.product_name }}
-                      </td>
-                      <td>{{ item.point_cost }}</td>
-      
-                      <td>
-                          {{ 'In Stock' if item.available else 'Unavailable' }}
-                      </td>
-      
-                      <td>
-                          <form method="POST"
-                                action="/sponsor/catalog/{{ item.product_id }}/availability">
-      
-                              <input type="hidden"
-                                     name="csrf_token"
-                                     value="{{ csrf_token() }}">
-      
-                              <button type="submit">
-                                  {{ 'Disable' if item.available else 'Enable' }}
-                              </button>
-                          </form>
-                      </td>
-                  </tr>
-                  {% endfor %}
-      
-              {% else %}
-                  <tr>
-                      <td colspan="4" class="catalog-empty">
-                          No rewards added yet.
-                      </td>
-                  </tr>
-              {% endif %}
-          </tbody>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price (points)</th>
+            <th>Availability</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="3" class="catalog-empty">Catalog will load here from the product API.</td>
+          </tr>
+        </tbody>
       </table>
-      
-      <p>
-          <a href="/sponsor/games">
-              Search RAWG games to add as rewards
-          </a>
-      </p>
-      
-      <p>
-          Game data and images from
-          <a href="https://rawg.io/">RAWG</a>.
-      </p>
-      
-      <h3>Add Reward</h3>
-      
-      <form method="POST" action="/sponsor/catalog">
-      
-          <input type="hidden"
-                 name="csrf_token"
-                 value="{{ csrf_token() }}">
-      
-          <label>
-              Product name
-              <input name="product_name" maxlength="100" required>
-          </label>
-      
-          <label>
-              Point cost
-              <input type="number"
-                     name="point_cost"
-                     min="1"
-                     max="1000000"
-                     required>
-          </label>
-      
-          <button type="submit">Add Reward</button>
-      
-      </form>
 
       <!-- Driver Point Report: driver name identifies which driver each point change row belongs to -->
       <h2>Driver Point Report</h2>
