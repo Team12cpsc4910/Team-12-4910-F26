@@ -21,6 +21,10 @@
 
       <h1 style="text-align: center;">My Profile</h1>
 
+      {% if password_changed %}
+        <p class="success-message">Your password has been changed.</p>
+      {% endif %}
+
       <div style="max-width: 400px; margin: 0 auto; text-align: left;">
 
         <p>
@@ -76,6 +80,12 @@
           </button>
 
         </form>
+
+        {% if user.user_type == 'Admin' %}
+        <form action="/admin/password" method="get" style="margin-top: 20px;">
+          <button type="submit">Change Password</button>
+        </form>
+        {% endif %}
 
       </div>
 

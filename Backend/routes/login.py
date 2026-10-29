@@ -330,8 +330,8 @@ def profile():
     finally:
         conn.close()
 
-    return render_template('profile.html', user=user)
-
+    return render_template('profile.html', user=user,
+                           password_changed=request.args.get('password_changed') == '1')
 
 @auth_bp.route('/logout')
 def logout():

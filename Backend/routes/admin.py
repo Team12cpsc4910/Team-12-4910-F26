@@ -1,6 +1,8 @@
 import re
 
+import pymysql
 from flask import Blueprint, render_template, request, redirect, session, g, abort
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db_connection
 from routes.applications import get_sponsors
@@ -203,6 +205,43 @@ def update_admin_user(admin_user_id, values):
     finally:
         conn.close()
 
+def change_own_password(user_id, current_password, new_password, confirm_password):
+    if not 8 <= len(new_password) <= 128:
+        raise AdminError('Password must be 8–128 characters.')
+    if not any(c.isupper() for c in new_password):
+        raise AdminError('Password must contain at least 1 uppercase letter.')
+    if not any(c.isdigit() for c in new_password):
+        raise AdminError('Password must contain at least 1 number.')
+    if new_password != confirm_password:
+        raise AdminError('New passwords do not match.')
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT password_hash FROM UserAccount WHERE user_id = %s FOR UPDATE', (user_id,))
+            account = cur.fetchone()
+            if not account or not check_password_hash(account['password_hash'], current_password):
+                raise AdminError('Your current password is incorrect.')
+            if check_password_hash(account['password_hash'], new_password):
+                raise AdminError('Your new password must be different from your current password.')
+
+            cur.execute('UPDATE UserAccount SET password_hash = %s WHERE user_id = %s',
+                        (generate_password_hash(new_password), user_id))
+
+            try:
+                cur.execute("""
+                    INSERT INTO PasswordChangeLog (user_id, changed_by_user_id, change_type)
+                    VALUES (%s, %s, 'Self Change')
+                """, (user_id, user_id))
+            except pymysql.MySQLError as e:
+                print(f"Password change log error: {e}")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 @admin_bp.route('/admin/sponsor-users')
 @login_required
 def admin_sponsor_users():
@@ -297,3 +336,21 @@ def edit_admin_user(admin_user_id):
 
     return render_template('admin_admin_user_form.html', admin_user=admin_user, values=values,
                            is_self=is_self, error=error), (400 if error else 200)
+
+@admin_bp.route('/admin/password', methods=['GET', 'POST'])
+@login_required
+def admin_change_password():
+    require_admin()
+    error = None
+    if request.method == 'POST':
+        check_csrf()
+        try:
+            change_own_password(g.user['user_id'],
+                                request.form.get('current_password', ''),
+                                request.form.get('new_password', ''),
+                                request.form.get('confirm_password', ''))
+            return redirect('/profile?password_changed=1')
+        except AdminError as exc:
+            error = str(exc)
+
+    return render_template('admin_password_form.html', error=error), (400 if error else 200)
