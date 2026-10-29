@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, session, redirect, abort
 
 from database import get_db_connection
+from accounts import create_account, AccountValidationError
 from routes.applications import is_sponsor_session
 from routes.drivers import get_sponsor_company
 from security import check_csrf
@@ -122,6 +123,7 @@ def render_company_page(company, status=200, **extra):
     return render_template('sponsor_company.html', company=company, values=extra.pop('values', {}),
                            saved=request.args.get('saved') == '1',
                            deactivated=request.args.get('deactivated') == '1',
+                           added=request.args.get('added') == '1',
                            users=users, my_sponsor_user_id=my_id,
                            max_length=MAX_COMPANY_NAME_LENGTH, **extra), status
 
@@ -163,3 +165,31 @@ def deactivate_company_user(sponsor_user_id):
     except CompanyError as exc:
         return render_company_page(get_sponsor_company(session['username']), 409, users_error=str(exc))
     return redirect('/sponsor/company?deactivated=1')
+
+@company_bp.route('/sponsor/company/users/new', methods=['GET', 'POST'])
+def add_company_user():
+    if 'username' not in session:
+        return redirect('/')
+    if not is_sponsor_session():
+        return redirect('/dashboard')
+
+    company = get_sponsor_company(session['username'])
+    error = None
+    values = {}
+    if request.method == 'POST':
+        check_csrf()
+        if not company:
+            abort(403)
+        values = {k: request.form.get(k, '').strip() for k in ('username', 'email', 'first_name', 'last_name')}
+        values['email'] = values['email'].lower()
+        data = {**values, 'sponsor_id': str(company['sponsor_id']), 'company_name': '',
+                'password': request.form.get('password', ''),
+                'confirm_password': request.form.get('confirm_password', '')}
+        try:
+            create_account(data, 'Sponsor')
+            return redirect('/sponsor/company?added=1')
+        except AccountValidationError as exc:
+            error = str(exc)
+
+    return render_template('sponsor_user_form.html', company=company, values=values,
+                           error=error), (400 if error else 200)

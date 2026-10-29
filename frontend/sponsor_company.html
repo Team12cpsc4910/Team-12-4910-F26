@@ -53,6 +53,14 @@
         {% if deactivated %}
           <p class="success-message">Login deactivated. That user can no longer sign in.</p>
         {% endif %}
+        {% if added %}
+          <p class="success-message">Sponsor user added. They can now log in with the username and password you set.</p>
+        {% endif %}
+
+        <form action="/sponsor/company/users/new" method="get">
+          <button type="submit">Add Sponsor User</button>
+        </form>
+        
         {% if users_error %}
           <p class="error-message">{{ users_error }}</p>
         {% endif %}
