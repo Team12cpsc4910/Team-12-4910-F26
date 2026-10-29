@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, session, redirect, g
+from flask import Blueprint, request, render_template, session, redirect, g, current_app
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
@@ -9,51 +9,41 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
+    username = (request.form.get('username') or '').strip()
+    password = request.form.get('password') or ''
 
-    if username == "admin" and password == "test":
-        session['username'] = username
-        session['user_type'] = 'Admin'
-        return redirect('/dashboard')
+    if not username or not password:
+        return 'Enter a username and password.', 400
 
-    elif username == "driver" and password == "test":
-        session['username'] = username
-        session['user_type'] = 'Driver'
-        return redirect('/dashboard')
-
-    elif username == "sponsor" and password == "test":
-        session['username'] = username
-        session['user_type'] = 'Sponsor'
-        return redirect('/dashboard')
-
-    conn = get_db_connection()
-
+    # Every role needs a real UserAccount record and a user_id. The old
+    # admin/test, driver/test, and sponsor/test shortcuts were not real logins:
+    # they created sessions without user_id, so protected pages did not work.
     try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT user_id, username, password_hash, user_type, account_locked
-                FROM UserAccount
-                WHERE username = %s
-            """, (username,))
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT user_id, username, password_hash, user_type, account_locked
+                    FROM UserAccount WHERE username = %s
+                """, (username,))
+                user = cur.fetchone()
+        finally:
+            conn.close()
+    except Exception:
+        current_app.logger.exception('Unable to check login against UserAccount')
+        return 'Login is temporarily unavailable. Please try again later.', 503
 
-            user = cur.fetchone()
+    if not user or not check_password_hash(user.get('password_hash') or '', password):
+        return 'Invalid username or password. Please press back and try again.', 401
 
-    finally:
-        conn.close()
+    if user['account_locked']:
+        return 'This account is deactivated or locked. Contact your sponsor or administrator.', 403
 
-    if user and check_password_hash(user['password_hash'], password):
-        # Checked after the password so a wrong guess can't reveal which accounts are deactivated
-        if user['account_locked']:
-            return "This account has been deactivated or locked. Please contact your sponsor or an administrator."
-
-        session['user_id'] = user['user_id']
-        session['username'] = user['username']
-        session['user_type'] = user['user_type']
-
-        return redirect('/dashboard')
-
-    return "Invalid username or password. Please press back and try again."
+    session.clear()
+    session['user_id'] = user['user_id']
+    session['username'] = user['username']
+    session['user_type'] = user['user_type']
+    return redirect('/dashboard')
 
 
 def get_sponsor_point_report(username):
@@ -106,12 +96,10 @@ def get_sponsor_point_report(username):
 
 
 @auth_bp.route('/dashboard')
+@login_required
 def dashboard():
-    if 'username' not in session:
-        return redirect('/')
-
-    current_user = session['username']
-    user_type = session.get('user_type')
+    current_user = g.user['username']
+    user_type = g.user['user_type']
 
     if user_type == "Admin":
         return render_template('admin_dashboard.html')
@@ -120,7 +108,7 @@ def dashboard():
         return render_template(
             'sponsor_dashboard.html',
             report=get_sponsor_point_report(current_user),
-            catalog=get_sponsor_catalog(session.get('user_id'))
+            catalog=get_sponsor_catalog(g.user['user_id'])
         )
         
     elif user_type == "Driver":
@@ -131,6 +119,8 @@ def dashboard():
         approved = False
         dropped = False
         rejected = False
+        driver_profile_missing = False
+        driver_error = None
         conn = None
 
         try:
@@ -144,11 +134,13 @@ def dashboard():
                            d.application_status
                     FROM DriverUser d
                     WHERE d.user_id = %s
-                """, (session.get('user_id', 0),))
+                """, (g.user['user_id'],))
 
                 driver = cur.fetchone()
 
-                if driver:
+                if not driver:
+                    driver_profile_missing = True
+                else:
                     points = driver['points']
 
                     cur.execute("""
@@ -185,22 +177,30 @@ def dashboard():
                     rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
-                        cur.execute("""
-                            SELECT product_id,
-                                   product_name,
-                                   description,
-                                   image_url,
-                                   point_cost,
-                                   Availability AS available
-                            FROM ProductCatalog
-                            WHERE sponsor_id = %s
-                            ORDER BY product_name
-                        """, (driver['sponsor_id'],))
-
+                        try:
+                            cur.execute("""
+                                SELECT product_id, product_name, description,
+                                       image_url, point_cost, availability AS available
+                                FROM ProductCatalog
+                                WHERE sponsor_id = %s ORDER BY product_name
+                            """, (driver['sponsor_id'],))
+                        except Exception as exc:
+                            # On an older schema, the RAWG image column may not
+                            # be deployed yet. Show the catalog without images.
+                            if not (exc.args and exc.args[0] == 1054 and
+                                    'image_url' in str(exc)):
+                                raise
+                            cur.execute("""
+                                SELECT product_id, product_name, description,
+                                       point_cost, availability AS available
+                                FROM ProductCatalog
+                                WHERE sponsor_id = %s ORDER BY product_name
+                            """, (driver['sponsor_id'],))
                         catalog = cur.fetchall()
 
-        except Exception as e:
-            print(f"Database error: {e}")
+        except Exception:
+            current_app.logger.exception('Driver dashboard database error')
+            driver_error = 'Unable to load driver details from the database. Please try again.'
 
         finally:
             if conn and conn.open:
@@ -214,7 +214,9 @@ def dashboard():
             redemptions=redemptions,
             approved=approved,
             dropped=dropped,
-            rejected=rejected
+            rejected=rejected,
+            driver_profile_missing=driver_profile_missing,
+            driver_error=driver_error
         )
 
     else:
@@ -223,12 +225,10 @@ def dashboard():
 
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
 def profile():
-    if 'username' not in session:
-        return redirect('/')
-
-    current_user = session['username']
-    user_type = session.get('user_type')
+    current_user = g.user['username']
+    user_type = g.user['user_type']
 
     conn = get_db_connection()
 
