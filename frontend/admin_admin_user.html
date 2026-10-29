@@ -24,6 +24,10 @@
         {% endif %}
       </h1>
 
+      {% if updated %}
+        <p class="success-message">Admin user updated.</p>
+      {% endif %}
+
       <dl>
         <dt>Username</dt>
         <dd>{{ admin_user.username }}</dd>
@@ -43,6 +47,10 @@
         <dt>Failed Logins</dt>
         <dd>{{ admin_user.failed_logins }}</dd>
       </dl>
+
+      <form action="/admin/admin-users/{{ admin_user.admin_user_id }}/edit" method="get">
+        <button type="submit">Edit Admin User</button>
+      </form>
 
       <p style="text-align: center;"><a href="/admin/admin-users">Back to Admin Users</a></p>
     </main>
