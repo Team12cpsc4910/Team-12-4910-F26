@@ -120,6 +120,43 @@ def update_sponsor_user(sponsor_user_id, values):
     finally:
         conn.close()
 
+def get_admin_users():
+    admin_users = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.admin_user_id, a.first_name, a.last_name,
+                       u.username, u.email, u.account_locked
+                FROM AdminUser a
+                JOIN UserAccount u ON a.user_id = u.user_id
+                ORDER BY a.last_name, a.first_name, u.username
+            """)
+            admin_users = cur.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+    return admin_users
+
+
+def get_admin_user(admin_user_id):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.admin_user_id, a.first_name, a.last_name,
+                       u.username, u.email, u.account_locked, u.failed_logins
+                FROM AdminUser a
+                JOIN UserAccount u ON a.user_id = u.user_id
+                WHERE a.admin_user_id = %s
+            """, (admin_user_id,))
+            return cur.fetchone()
+    finally:
+        conn.close()
+
 @admin_bp.route('/admin/sponsor-users')
 @login_required
 def admin_sponsor_users():
@@ -164,3 +201,19 @@ def edit_sponsor_user(sponsor_user_id):
 
     return render_template('admin_sponsor_user_form.html', sponsor_user=sponsor_user, values=values,
                            sponsors=get_sponsors(), error=error), (400 if error else 200)
+
+@admin_bp.route('/admin/admin-users')
+@login_required
+def admin_admin_users():
+    require_admin()
+    return render_template('admin_admin_users.html', admin_users=get_admin_users())
+
+
+@admin_bp.route('/admin/admin-users/<int:admin_user_id>')
+@login_required
+def admin_admin_user(admin_user_id):
+    require_admin()
+    admin_user = get_admin_user(admin_user_id)
+    if not admin_user:
+        abort(404)
+    return render_template('admin_admin_user.html', admin_user=admin_user)
