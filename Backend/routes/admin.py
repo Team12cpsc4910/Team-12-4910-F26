@@ -242,6 +242,28 @@ def change_own_password(user_id, current_password, new_password, confirm_passwor
     finally:
         conn.close()
 
+def get_drivers():
+    drivers = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT d.driver_id, d.first_name, d.last_name, d.points, d.application_status,
+                       u.username, u.account_locked, s.sponsor_name
+                FROM DriverUser d
+                JOIN UserAccount u ON d.user_id = u.user_id
+                LEFT JOIN Sponsor s ON d.sponsor_id = s.sponsor_id
+                ORDER BY d.last_name, d.first_name
+            """)
+            drivers = cur.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        if conn and conn.open:
+            conn.close()
+    return drivers
+
 @admin_bp.route('/admin/sponsor-users')
 @login_required
 def admin_sponsor_users():
@@ -354,3 +376,55 @@ def admin_change_password():
             error = str(exc)
 
     return render_template('admin_password_form.html', error=error), (400 if error else 200)
+
+@admin_bp.route('/admin/drivers')
+@login_required
+def admin_drivers():
+    require_admin()
+    return render_template('admin_drivers.html', drivers=get_drivers(),
+                           locked=request.args.get('locked') == '1')
+
+@admin_bp.route('/admin/drivers/<int:driver_id>/assume', methods=['POST'])
+@login_required
+def assume_driver(driver_id):
+    require_admin()
+    check_csrf()
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT u.user_id, u.username, u.user_type, u.account_locked
+                FROM DriverUser d
+                JOIN UserAccount u ON d.user_id = u.user_id
+                WHERE d.driver_id = %s
+            """, (driver_id,))
+            driver = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not driver:
+        abort(404)
+    if driver['account_locked']:
+        return redirect('/admin/drivers?locked=1')
+
+    session['impersonator'] = {'user_id': g.user['user_id'],
+                               'username': g.user['username'],
+                               'user_type': g.user['user_type']}
+    session['user_id'] = driver['user_id']
+    session['username'] = driver['username']
+    session['user_type'] = driver['user_type']
+    return redirect('/dashboard')
+
+
+@admin_bp.route('/admin/stop-assuming', methods=['POST'])
+def stop_assuming():
+    check_csrf()
+    admin = session.pop('impersonator', None)
+    if not admin:
+        return redirect('/dashboard')
+
+    session['user_id'] = admin['user_id']
+    session['username'] = admin['username']
+    session['user_type'] = admin['user_type']
+    return redirect('/admin/drivers')

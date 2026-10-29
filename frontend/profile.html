@@ -18,7 +18,15 @@
     </nav>
 
     <main>
-
+      {% if session.get('impersonator') %}
+        <div class="success-message" style="text-align: center;">
+          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
+          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Return to Admin</button>
+          </form>
+        </div>
+      {% endif %}
       <h1 style="text-align: center;">My Profile</h1>
 
       {% if password_changed %}
