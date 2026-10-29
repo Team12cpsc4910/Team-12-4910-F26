@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Users</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Admin Users</h1>
+      <p style="text-align: center;">Every administrator account. Select an admin to view their information.</p>
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if admin_users %}
+            {% for admin in admin_users %}
+            <tr>
+              <td>
+                {% if admin.first_name or admin.last_name %}
+                  {{ admin.first_name or '' }} {{ admin.last_name or '' }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ admin.username }}</td>
+              <td>{{ admin.email }}</td>
+              <td>
+                {% if admin.account_locked %}
+                  <span class="status dropped">Locked</span>
+                {% else %}
+                  <span class="status approved">Active</span>
+                {% endif %}
+              </td>
+              <td><a href="/admin/admin-users/{{ admin.admin_user_id }}">View</a></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no admin users yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

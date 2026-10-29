@@ -3,7 +3,7 @@ CREATE TABLE Team12_DB.DriverUser (
     user_id INT NOT NULL,
     sponsor_id INT NOT NULL,
     points INT NOT NULL DEFAULT 0 CHECK (points >= 0),
-    application_status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+    application_status VARCHAR(20) NOT NULL DEFAULT 'Not Applied',
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
 

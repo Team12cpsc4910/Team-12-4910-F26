@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, session, redirect
+from flask import Blueprint, request, render_template, session, redirect, g
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
@@ -32,7 +32,7 @@ def login():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT user_id, username, password_hash, user_type
+                SELECT user_id, username, password_hash, user_type, account_locked
                 FROM UserAccount
                 WHERE username = %s
             """, (username,))
@@ -43,6 +43,10 @@ def login():
         conn.close()
 
     if user and check_password_hash(user['password_hash'], password):
+        # Checked after the password so a wrong guess can't reveal which accounts are deactivated
+        if user['account_locked']:
+            return "This account has been deactivated or locked. Please contact your sponsor or an administrator."
+
         session['user_id'] = user['user_id']
         session['username'] = user['username']
         session['user_type'] = user['user_type']
@@ -115,16 +119,18 @@ def dashboard():
     elif user_type == "Sponsor":
         return render_template(
             'sponsor_dashboard.html',
-            report=get_sponsor_point_report(current_user)
+            report=get_sponsor_point_report(current_user),
+            catalog=get_sponsor_catalog(session.get('user_id'))
         )
-
+        
     elif user_type == "Driver":
         points = 0
         history = []
         catalog = []
-       redemptions = []
+        redemptions = []
         approved = False
         dropped = False
+        rejected = False
         conn = None
 
         try:
@@ -176,6 +182,7 @@ def dashboard():
 
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
+                    rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
                         cur.execute("""
@@ -205,7 +212,8 @@ def dashboard():
             catalog=catalog,
             redemptions=redemptions,
             approved=approved,
-            dropped=dropped
+            dropped=dropped,
+            rejected=rejected
         )
 
     else:
@@ -322,8 +330,8 @@ def profile():
     finally:
         conn.close()
 
-    return render_template('profile.html', user=user)
-
+    return render_template('profile.html', user=user,
+                           password_changed=request.args.get('password_changed') == '1')
 
 @auth_bp.route('/logout')
 def logout():

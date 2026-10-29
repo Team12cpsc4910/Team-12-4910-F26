@@ -7,24 +7,34 @@ class AccountValidationError(ValueError):
     pass
 
 
-def validate_account(data, role):
-    if role not in ('Driver', 'Sponsor', 'Admin'):
-        raise AccountValidationError('Choose a valid account type.')
-    if not re.fullmatch(r'[A-Za-z0-9_.-]{3,50}', data.get('username', '')):
-        raise AccountValidationError('Username must be 3–50 letters, numbers, periods, underscores, or hyphens.')
+# Name and email rules, shared by account creation and by sponsors editing a driver's info
+def validate_name_and_email(data):
     if not all(1 <= len(data.get(k, '')) <= 50 for k in ('first_name','last_name')):
         raise AccountValidationError('Enter first and last names of up to 50 characters each.')
     email = data.get('email', '')
     if len(email) > 100 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
         raise AccountValidationError('Enter a valid email address.')
-    minimum = 16 if role == 'Admin' else 15
-    if not minimum <= len(data.get('password', '')) <= 128:
-        raise AccountValidationError(f'Password must be {minimum}–128 characters.')
-    if data['password'] != data.get('confirm_password'):
+
+
+def validate_account(data, role):
+    if role not in ('Driver', 'Sponsor', 'Admin'):
+        raise AccountValidationError('Choose a valid account type.')
+    if not re.fullmatch(r'[A-Za-z0-9_.-]{3,50}', data.get('username', '')):
+        raise AccountValidationError('Username must be 3–50 letters, numbers, periods, underscores, or hyphens.')
+    validate_name_and_email(data)
+    password = data.get('password', '')
+    if not 8 <= len(password) <= 128:
+        raise AccountValidationError('Password must be 8–128 characters.')
+    if not any(c.isupper() for c in password):
+        raise AccountValidationError('Password must contain at least 1 uppercase letter.')
+    if not any(c.isdigit() for c in password):
+        raise AccountValidationError('Password must contain at least 1 number.')
+    if password != data.get('confirm_password'):
         raise AccountValidationError('Passwords do not match.')
-
-
-def create_account(data, role, *, allow_new_company=False):
+        
+# Driver self-registration does not mean an application was submitted.
+# Sponsors can still create already-approved drivers directly.
+def create_account(data, role, *, allow_new_company=False, driver_status='Not Applied'):
     validate_account(data, role)
     company = data.get('company_name', '').strip()
     if company and (not allow_new_company or role != 'Sponsor'):
@@ -51,8 +61,8 @@ def create_account(data, role, *, allow_new_company=False):
                         (data['username'], data['email'], hashed, role))
             user_id = cur.lastrowid
             if role == 'Driver':
-                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, 'Pending', %s, %s)",
-                            (user_id, sponsor_id, data['first_name'], data['last_name']))
+                cur.execute("INSERT INTO DriverUser (user_id, sponsor_id, points, application_status, first_name, last_name) VALUES (%s, %s, 0, %s, %s, %s)",
+                            (user_id, sponsor_id, driver_status, data['first_name'], data['last_name']))
             elif role == 'Sponsor':
                 cur.execute('INSERT INTO SponsorUser (user_id, sponsor_id, first_name, last_name) VALUES (%s, %s, %s, %s)',
                             (user_id, sponsor_id, data['first_name'], data['last_name']))

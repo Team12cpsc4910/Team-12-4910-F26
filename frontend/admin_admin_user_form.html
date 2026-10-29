@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit Admin User</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Edit {{ admin_user.username }}</h1>
+
+      {% if error %}
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+
+      <form action="/admin/admin-users/{{ admin_user.admin_user_id }}/edit" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label for="first_name">First Name:</label>
+          <input type="text" id="first_name" name="first_name" maxlength="50" value="{{ values.first_name }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Last Name:</label>
+          <input type="text" id="last_name" name="last_name" maxlength="50" value="{{ values.last_name }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" maxlength="50" value="{{ values.username }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" maxlength="100" value="{{ values.email }}" required>
+        </div>
+
+        {% if not is_self %}
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="account_locked" {% if values.account_locked %}checked{% endif %}>
+            Account locked
+          </label>
+        </div>
+        {% endif %}
+
+        <button type="submit">Save Changes</button>
+      </form>
+
+      <p style="text-align: center;"><a href="/admin/admin-users/{{ admin_user.admin_user_id }}">Cancel</a></p>
+    </main>
+  </div>
+</body>
+</html>

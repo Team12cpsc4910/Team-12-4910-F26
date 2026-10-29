@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin User</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>
+        {% if admin_user.first_name or admin_user.last_name %}
+          {{ admin_user.first_name or '' }} {{ admin_user.last_name or '' }}
+        {% else %}
+          {{ admin_user.username }}
+        {% endif %}
+      </h1>
+
+      {% if updated %}
+        <p class="success-message">Admin user updated.</p>
+      {% endif %}
+
+      <dl>
+        <dt>Username</dt>
+        <dd>{{ admin_user.username }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ admin_user.email }}</dd>
+
+        <dt>Status</dt>
+        <dd>
+          {% if admin_user.account_locked %}
+            <span class="status dropped">Locked</span>
+          {% else %}
+            <span class="status approved">Active</span>
+          {% endif %}
+        </dd>
+
+        <dt>Failed Logins</dt>
+        <dd>{{ admin_user.failed_logins }}</dd>
+      </dl>
+
+      <form action="/admin/admin-users/{{ admin_user.admin_user_id }}/edit" method="get">
+        <button type="submit">Edit Admin User</button>
+      </form>
+
+      <p style="text-align: center;"><a href="/admin/admin-users">Back to Admin Users</a></p>
+    </main>
+  </div>
+</body>
+</html>

@@ -4,8 +4,13 @@ All money-like operations use MySQL row locks and a single database transaction.
 The logged-in identity comes from security.load_user, not untrusted form fields.
 """
 
+import json
+import os
 import re
 import secrets
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from flask import Blueprint, abort, flash, g, redirect, request, render_template
 
@@ -41,6 +46,9 @@ def redeem_reward(user_id, product_id, request_key):
 
     conn = get_db_connection()
     try:
+        # Start a database transaction
+        conn.begin()
+    
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT driver_id, sponsor_id, points, application_status
@@ -60,6 +68,10 @@ def redeem_reward(user_id, product_id, request_key):
             if existing:
                 if existing['product_id'] != product_id:
                     raise RedemptionError('This redemption request belongs to another reward.')
+            
+                # Release locks because this purchase already exists
+                conn.rollback()
+            
                 return existing['redemption_id']
 
             # Match the product against the sponsor recorded for THIS driver,
@@ -160,14 +172,157 @@ def get_sponsor_catalog(user_id):
             sponsor_id = sponsor_id_for_user(cur, user_id)
             if sponsor_id is None:
                 return []
+
             cur.execute("""
-                SELECT product_id, product_name, point_cost, availability AS available
-                FROM ProductCatalog WHERE sponsor_id = %s ORDER BY product_name
+                SELECT product_id, product_name, point_cost, image_url,
+                       availability AS available
+                FROM ProductCatalog
+                WHERE sponsor_id = %s
+                ORDER BY product_name
             """, (sponsor_id,))
+
             return cur.fetchall()
     finally:
         conn.close()
 
+def fetch_rawg(path, params=None):
+    """Retrieve game metadata server-side so the RAWG key stays private."""
+
+    api_key = os.environ.get('RAWG_API_KEY', '').strip()
+
+    if not api_key:
+        raise RuntimeError('RAWG_API_KEY is not configured on the server.')
+
+    query = urlencode({'key': api_key, **(params or {})})
+
+    url = f'https://api.rawg.io/api/{path}?{query}'
+
+    req = Request(url, headers={
+        'Accept': 'application/json',
+        'User-Agent': 'Team12-Game-Catalog/1.0',
+    })
+
+    try:
+        with urlopen(req, timeout=8) as response:
+            return json.load(response)
+
+    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+        raise RuntimeError(
+            'RAWG is unavailable. Check your API key or try again later.'
+        ) from exc
+
+@rewards_bp.get('/sponsor/games')
+@login_required
+def search_rawg_games():
+
+    require_role('Sponsor')
+
+    term = request.args.get('search', '').strip()[:80]
+
+    games = []
+    error = None
+
+    if term:
+        if len(term) < 2:
+            error = 'Enter at least two characters to search.'
+        else:
+            try:
+                data = fetch_rawg('games', {
+                    'search': term,
+                    'page_size': 10
+                })
+
+                games = data.get('results', [])
+
+            except RuntimeError as exc:
+                error = str(exc)
+
+    return render_template(
+        'sponsor_games.html',
+        games=games,
+        search=term,
+        error=error
+    )
+
+@rewards_bp.post('/sponsor/catalog/rawg')
+@login_required
+def add_rawg_reward():
+
+    require_role('Sponsor')
+    check_csrf()
+
+    raw_id = request.form.get('game_id', '').strip()
+    raw_cost = request.form.get('point_cost', '').strip()
+
+    if (not raw_id.isascii() or not raw_id.isdigit() or len(raw_id) > 12 or
+            int(raw_id) < 1 or not raw_cost.isascii() or not raw_cost.isdigit() or
+            not 1 <= int(raw_cost) <= 1000000):
+
+        flash(
+            'Choose a valid game and point cost between 1 and 1,000,000.',
+            'error'
+        )
+
+        return redirect('/sponsor/games')
+
+    try:
+        game = fetch_rawg(f'games/{raw_id}')
+
+    except RuntimeError as exc:
+        flash(str(exc), 'error')
+        return redirect('/sponsor/games')
+
+    name = str(game.get('name') or '').strip()[:100]
+
+    if not name:
+        flash('RAWG did not return a game name.', 'error')
+        return redirect('/sponsor/games')
+
+    description = str(game.get('description_raw') or '')[:255]
+
+    image_url = str(game.get('background_image') or '')[:500]
+
+    if not image_url.startswith('https://'):
+        image_url = None
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cur:
+
+            sponsor_id = sponsor_id_for_user(
+                cur,
+                g.user['user_id']
+            )
+
+            if sponsor_id is None:
+                abort(403)
+
+            cur.execute("""
+                INSERT INTO ProductCatalog
+                    (sponsor_id, product_name, description,
+                     point_cost, availability, image_url)
+                VALUES (%s, %s, %s, %s, TRUE, %s)
+            """, (
+                sponsor_id,
+                name,
+                description,
+                int(raw_cost),
+                image_url
+            ))
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    flash(f'{name} added to your reward catalog.', 'success')
+
+    return redirect('/dashboard')
 
 @rewards_bp.post('/sponsor/catalog')
 @login_required

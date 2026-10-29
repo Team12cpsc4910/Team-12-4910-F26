@@ -38,7 +38,7 @@ def load_user():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT user_id, username, email, user_type
+                SELECT user_id, username, email, user_type, account_locked
                 FROM UserAccount
                 WHERE user_id = %s
                 """,
@@ -49,6 +49,11 @@ def load_user():
 
     finally:
         conn.close()
+
+    # A deactivated (locked) account loses access immediately, even mid-session
+    if g.user and g.user['account_locked']:
+        session.clear()
+        g.user = None
 
 
 def login_required(view):

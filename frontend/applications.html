@@ -14,6 +14,15 @@
       <a href="/logout">Log Out</a>
     </nav>
     <main>
+      {% if session.get('impersonator') %}
+        <div class="success-message" style="text-align: center;">
+          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
+          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Return to Admin</button>
+          </form>
+        </div>
+      {% endif %}
       <h1 style="text-align: center;">Applications</h1>
       <p style="text-align: center;">Apply to a sponsor company to join their incentive program.</p>
 
@@ -46,6 +55,33 @@
           {% endif %}
         </tbody>
       </table>
+      <h2>Rejected Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Sponsor</th>
+            <th>Rejected</th>
+            <th>Status</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rejected %}
+            {% for app in rejected %}
+            <tr>
+              <td>{{ app.sponsor_name }}</td>
+              <td>{{ app.decided or '—' }}</td>
+              <td><span class="status rejected">{{ app.state | capitalize }}</span></td>
+              <td>{{ app.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No rejected applications.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>      
     </main>
   </div>
 </body>
