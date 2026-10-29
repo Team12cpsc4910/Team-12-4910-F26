@@ -2,41 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>About - Good Driver Incentive Program</title>
   <link rel="stylesheet" href="/style.css?v=5" />
 </head>
 <body>
   <div class="container">
-    <!-- Nav bar: updated links to use Flask routes -->
     <nav>
       <a href="https://main.d13wzj1s6istn6.amplifyapp.com/">Home</a>
-      <a href="/about">About</a>
+      <a href="https://main.d13wzj1s6istn6.amplifyapp.com/about.html">About</a>
     </nav>
-
     <main>
       <h1>About</h1>
-      <!-- Values come from the AboutPage table via the /about route in Backend/routes/about.py -->
-      {% if about %}
       <dl class="about-info">
         <dt>Product Name</dt>
-        <dd>{{ about.product_name }}</dd>
-
+        <dd id="product_name">Good Driver Incentive Program</dd>
         <dt>Product Description</dt>
-        <dd>{{ about.product_description }}</dd>
-
+        <dd id="product_description">Drivers can earn points and redeem sponsor rewards.</dd>
         <dt>Team #</dt>
-        <dd>{{ about.team_number }}</dd>
-
+        <dd id="team_number">12</dd>
         <dt>Version # (Sprint #)</dt>
-        <dd>{{ about.version_number }}</dd>
-
+        <dd id="version_number">Not available</dd>
         <dt>Release Date</dt>
-        <dd>{{ about.release_date }}</dd>
+        <dd id="release_date">Not available</dd>
       </dl>
-      {% else %}
-      <p class="catalog-empty">About information is currently unavailable.</p>
-      {% endif %}
+      <p id="about-status" role="status" aria-live="polite"></p>
     </main>
   </div>
+  <script>
+    // This page is deployed as static HTML on Amplify, so Jinja cannot run here.
+    // Ask the Flask backend for AboutPage values; keep the fallback if unavailable.
+    const apiOrigin = (window.location.hostname === 'main.d13wzj1s6istn6.amplifyapp.com')
+      ? 'https://team12-backend-api.duckdns.org'
+      : window.location.origin;
+    fetch(`${apiOrigin}/api/about`)
+      .then(response => {
+        if (!response.ok) throw new Error('About request failed');
+        return response.json();
+      })
+      .then(data => {
+        for (const key of ['product_name', 'product_description', 'team_number',
+                           'version_number', 'release_date']) {
+          if (data[key] !== undefined && data[key] !== null) {
+            document.getElementById(key).textContent = String(data[key]);
+          }
+        }
+        if (!data.available) {
+          document.getElementById('about-status').textContent =
+            'Current sprint information is unavailable.';
+        }
+      })
+      .catch(() => {
+        document.getElementById('about-status').textContent =
+          'Live About details are unavailable; showing basic project information.';
+      });
+  </script>
 </body>
 </html>
+
