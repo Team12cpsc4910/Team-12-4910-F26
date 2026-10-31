@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Search Games - Sponsor</title>
+  <link rel="stylesheet" href="/style.css?v=5">
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Back to Sponsor Dashboard</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Find Video Game Rewards</h1>
+      <p>Search the RAWG database and select a game for your sponsor catalog.</p>
+      <form method="GET" action="/sponsor/games">
+        <label for="search">Game name</label>
+        <input id="search" name="search" value="{{ search }}" maxlength="80" required>
+        <button type="submit">Search Games</button>
+      </form>
+
+      {% for category, message in get_flashed_messages(with_categories=true) %}
+      <p role="status">{{ message }}</p>
+      {% endfor %}
+      {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+
+      {% if games %}
+      <h2>Results</h2>
+      <table class="catalog-table">
+        <thead><tr><th>Game</th><th>Released</th><th>Add to Catalog</th></tr></thead>
+        <tbody>
+          {% for game in games %}
+          <tr>
+            <td>
+              {% if game.background_image %}
+              <img src="{{ game.background_image }}" alt="" width="100" loading="lazy" style="vertical-align:middle; margin-right:8px;">
+              {% endif %}
+              {{ game.name }}
+            </td>
+            <td>{{ game.released or 'N/A' }}</td>
+            <td>
+              <form method="POST" action="/sponsor/catalog/rawg">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="game_id" value="{{ game.id }}">
+                <label>Point cost
+                  <input type="number" name="point_cost" min="1" max="1000000" required style="width:100px;">
+                </label>
+                <button type="submit">Add Reward</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif search and not error %}
+      <p>No games found.</p>
+      {% endif %}
+      <p>Game data and images from <a href="https://rawg.io/">RAWG</a>.</p>
+    </main>
+  </div>
+</body>
+</html>
