@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Drivers</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/drivers">Drivers</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Drivers</h1>
+      <p style="text-align: center;">Every driver account. Use "View as Driver" to see and use the site from that driver's perspective.</p>
+
+      {% if locked %}
+        <p class="error-message">That driver's account is locked, so it can't be viewed. Unlock it first.</p>
+      {% endif %}
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Username</th>
+            <th>Sponsor</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if drivers %}
+            {% for driver in drivers %}
+            <tr>
+              <td>{{ driver.first_name }} {{ driver.last_name }}</td>
+              <td>{{ driver.username }}</td>
+              <td>{{ driver.sponsor_name or '—' }}</td>
+              <td>{{ driver.points }}</td>
+              <td>
+                {% if driver.account_locked %}
+                  <span class="status dropped">Locked</span>
+                {% else %}
+                  <span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if not driver.account_locked %}
+                <form action="/admin/drivers/{{ driver.driver_id }}/assume" method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit">View as Driver</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="catalog-empty">There are no drivers yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

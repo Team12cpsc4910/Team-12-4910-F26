@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Find Games - Sponsor</title>
+
+    <link rel="stylesheet" href="/style.css?v=5">
+</head>
+
+<body>
+
+<div class="container">
+
+    <nav>
+        <a href="/dashboard">Back to Sponsor Dashboard</a>
+        <a href="/logout">Log Out</a>
+    </nav>
+
+    <main>
+
+        <h1>Find Video Game Rewards</h1>
+
+        <p>
+            Find a game with GG.deals and add it using
+            its current US retail price.
+        </p>
+
+        <p>
+            <strong>$1 = 100 points</strong>
+        </p>
+
+        <!-- Game Search -->
+
+        <form method="GET" action="/sponsor/games">
+
+            <label for="search">
+                Game name or GG.deals game link
+            </label>
+
+            <input
+                id="search"
+                name="search"
+                value="{{ search }}"
+                maxlength="180"
+                placeholder="elden-ring or https://gg.deals/game/elden-ring/"
+                required
+            >
+
+            <button type="submit">
+                Look Up Game
+            </button>
+
+        </form>
+
+        <p>
+            <small>
+                If searching by name does not work,
+                paste the exact game URL from
+                <a href="https://gg.deals/">GG.deals</a>.
+            </small>
+        </p>
+
+        <!-- Notifications -->
+
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+
+            <p role="status">{{ message }}</p>
+
+        {% endfor %}
+
+        {% if error %}
+
+            <p role="alert">{{ error }}</p>
+
+        {% endif %}
+
+        <!-- Game Results -->
+
+        {% if game %}
+
+        <h2>Game Result</h2>
+
+        <table class="catalog-table">
+
+            <thead>
+
+                <tr>
+                    <th>Game</th>
+                    <th>Current US Retail Price</th>
+                    <th>Reward Points</th>
+                    <th>Action</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr>
+
+                    <td>
+                        <a
+                            href="{{ game.url }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            {{ game.name }}
+                        </a>
+                    </td>
+
+                    <td>
+
+                        {% if game.price_usd is not none %}
+
+                            ${{ '%.2f'|format(game.price_usd) }} USD
+
+                        {% else %}
+
+                            Unavailable
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if game.point_cost is not none %}
+
+                            {{ game.point_cost }} points
+
+                        {% else %}
+
+                            Not available
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if game.point_cost is not none %}
+
+                        <form
+                            method="POST"
+                            action="/sponsor/catalog/ggdeals"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="game_slug"
+                                value="{{ game.slug }}"
+                            >
+
+                            <button type="submit">
+                                Add Reward
+                            </button>
+
+                        </form>
+
+                        {% else %}
+
+                            Cannot add without a current retail price.
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+        <p>
+            <small>
+                Prices are checked again when adding a reward.
+                Saved reward prices do not automatically update.
+                Sponsors are responsible for fulfilling redemptions.
+            </small>
+        </p>
+
+        {% endif %}
+
+        <p>
+            Game titles and price data provided by
+            <a href="https://gg.deals/">GG.deals</a>.
+        </p>
+
+    </main>
+
+</div>
+
+</body>
+</html>

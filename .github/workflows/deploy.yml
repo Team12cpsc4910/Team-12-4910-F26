@@ -1,0 +1,80 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s' "$EC2_SSH_KEY" | base64 --decode > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
+
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          echo "Checking EC2 connection settings..."
+
+          if [ "$EC2_HOST" = "54.160.249.17" ]; then
+            echo "EC2_HOST: Correct"
+          else
+            echo "EC2_HOST: Incorrect"
+          fi
+          
+          awk -v host="$EC2_HOST" '
+          NF > 0 {
+            print "Known hosts entry " NR
+            print "Number of fields:", NF
+            print "IP matches:", ($1 == host ? "YES" : "NO")
+            print "Key type correct:", ($2 == "ssh-ed25519" ? "YES" : "NO")
+          }
+          ' ~/.ssh/known_hosts
+
+          if [ -z "$EC2_KNOWN_HOSTS" ]; then
+            echo "ERROR: EC2_KNOWN_HOSTS secret is empty"
+            exit 1
+          fi
+          
+          if ! awk -v host="$EC2_HOST" '$1 == host && $2 == "ssh-ed25519" {found=1} END {exit !found}' ~/.ssh/known_hosts; then
+            echo "ERROR: Host key does not match EC2_HOST"
+            exit 1
+          fi
+          
+          echo "EC2 host key entry found"
+
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            "$EC2_USER@$EC2_HOST" 'bash -se' <<'REMOTE'
+            set -e
+
+            cd /home/ec2-user/Team-12-4910-F26
+
+            git pull --ff-only origin main
+
+            cd Backend
+
+            .venv/bin/python -m pip install -r requirements.txt
+
+            sudo -n systemctl restart team12-backend.service
+
+            sudo -n systemctl is-active team12-backend.service
+          REMOTE

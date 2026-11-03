@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Company Profile</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/sponsor/company">Company</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Company Profile</h1>
+
+      {% if company %}
+        <p style="text-align: center;">Keep your sponsor company's information up to date. Drivers see this name when they sign up and apply.</p>
+
+        {% if saved %}
+          <p class="success-message">Company profile updated.</p>
+        {% endif %}
+
+        {% if error %}
+          <p class="error-message">{{ error }}</p>
+        {% endif %}
+
+        <form action="/sponsor/company" method="POST" class="login-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label for="sponsor_name">Company Name:</label>
+            <input type="text" id="sponsor_name" name="sponsor_name" maxlength="{{ max_length }}"
+                   value="{{ values.get('sponsor_name', company.sponsor_name) }}" required>
+          </div>
+
+          <button type="submit">Save Changes</button>
+        </form>
+
+        <h2>Program Details</h2>
+        <dl>
+          <dt>Point Value</dt>
+          <dd>${{ company.point_value }} per point</dd>
+        </dl>
+
+        <h2>Sponsor Users</h2>
+        <p>Everyone with a sponsor login for your company. Deactivate a former employee's login so they can no longer sign in.</p>
+
+        {% if deactivated %}
+          <p class="success-message">Login deactivated. That user can no longer sign in.</p>
+        {% endif %}
+        {% if added %}
+          <p class="success-message">Sponsor user added. They can now log in with the username and password you set.</p>
+        {% endif %}
+
+        <form action="/sponsor/company/users/new" method="get">
+          <button type="submit">Add Sponsor User</button>
+        </form>
+        
+        {% if users_error %}
+          <p class="error-message">{{ users_error }}</p>
+        {% endif %}
+
+        <table class="catalog-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.username }}</td>
+              <td>
+                {% if user.account_locked %}
+                  <span class="status out-of-stock">Deactivated</span>
+                {% else %}
+                  <span class="status in-stock">Active</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if user.sponsor_user_id == my_sponsor_user_id %}
+                  (You)
+                {% elif not user.account_locked %}
+                  <form action="/sponsor/company/users/{{ user.sponsor_user_id }}/deactivate" method="POST"
+                        onsubmit="return confirm('Deactivate this login? They will no longer be able to sign in.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="danger">Deactivate</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No sponsor users found for your company.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="catalog-empty">Your account isn't linked to a sponsor company.</p>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

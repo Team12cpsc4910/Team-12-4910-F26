@@ -48,7 +48,7 @@ BEGIN
         val_user_id,
         param_sponsor_id,
         0,
-        'Pending',
+        'Not Applied',
         param_first_name,
         param_last_name
     );
