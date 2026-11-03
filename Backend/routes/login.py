@@ -3,6 +3,7 @@ from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
 from routes.rewards import get_sponsor_catalog
+from routes.admin import change_own_password, AdminError
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -339,6 +340,30 @@ def profile():
 
     return render_template('profile.html', user=user,
                            password_changed=request.args.get('password_changed') == '1')
+
+# Change Password: any real (database) account changes its own password by confirming the current
+# one. Reuses the admin page's change_own_password, so complexity rules and logging stay in one place.
+@auth_bp.route('/password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    # An admin assuming a driver is acting as that driver, so they can't change the driver's password
+    if session.get('impersonator'):
+        return redirect('/profile')
+
+    error = None
+    if request.method == 'POST':
+        check_csrf()
+        try:
+            change_own_password(g.user['user_id'],
+                                request.form.get('current_password', ''),
+                                request.form.get('new_password', ''),
+                                request.form.get('confirm_password', ''))
+            return redirect('/profile?password_changed=1')
+        except AdminError as exc:
+            error = str(exc)
+
+    return render_template('password_form.html', error=error), (400 if error else 200)
+
 
 @auth_bp.route('/logout')
 def logout():

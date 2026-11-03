@@ -93,6 +93,10 @@
         <form action="/admin/password" method="get" style="margin-top: 20px;">
           <button type="submit">Change Password</button>
         </form>
+        {% elif user.user_type in ('Sponsor', 'Driver') and session.get('user_id') and not session.get('impersonator') %}
+        <form action="/password" method="get" style="margin-top: 20px;">
+          <button type="submit">Change Password</button>
+        </form>
         {% endif %}
 
       </div>
