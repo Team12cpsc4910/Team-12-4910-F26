@@ -35,22 +35,26 @@ BEGIN
         IF (NEW.points - OLD.points) > 0 THEN
             INSERT INTO Team12_DB.PointChangeLog (
                 driver_id,
+                sponsor_id,
                 points_change,
                 reason
             )
             VALUES (
                 NEW.driver_id,
+                NEW.sponsor_id,
                 NEW.points - OLD.points,
                 'Points added'
             );
         ELSE
             INSERT INTO Team12_DB.PointChangeLog (
                 driver_id,
+                sponsor_id,
                 points_change,
                 reason
             )
             VALUES (
                 NEW.driver_id,
+                NEW.sponsor_id,
                 NEW.points - OLD.points,
                 'Points removed'
             );
@@ -64,7 +68,7 @@ AFTER INSERT ON Team12_DB.PasswordChangeLog
 FOR EACH ROW
 BEGIN
     UPDATE Team12_DB.UserAccount
-    SET locked = FALSE, login_attempts = 0
+    SET account_locked = FALSE, failed_logins = 0
     WHERE user_id = NEW.user_id;
 END//
 

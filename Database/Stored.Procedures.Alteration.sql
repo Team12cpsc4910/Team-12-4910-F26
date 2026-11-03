@@ -4,7 +4,6 @@ DELIMITER //
 
 CREATE PROCEDURE UpdateDriverAccount(
     IN param_driver_id INT,
-    IN param_sponsor_id INT,
     IN param_first_name VARCHAR(50),
     IN param_last_name VARCHAR(50)
 )
@@ -18,8 +17,7 @@ BEGIN
     START TRANSACTION;
 
     UPDATE DriverUser
-    SET sponsor_id = param_sponsor_id,
-        first_name = param_first_name,
+    SET first_name = param_first_name,
         last_name = param_last_name
     WHERE driver_id = param_driver_id;
 

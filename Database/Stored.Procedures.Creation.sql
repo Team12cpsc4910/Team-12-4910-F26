@@ -6,7 +6,6 @@ CREATE PROCEDURE CreateDriverAccount(
     IN param_username VARCHAR(50),
     IN param_email VARCHAR(100),
     IN param_password_hash VARCHAR(255),
-    IN param_sponsor_id INT,
     IN param_first_name VARCHAR(50),
     IN param_last_name VARCHAR(50)
 )
@@ -38,16 +37,12 @@ BEGIN
 
     INSERT INTO DriverUser (
         user_id,
-        sponsor_id,
-        points,
         application_status,
         first_name,
         last_name
     )
     VALUES (
         val_user_id,
-        param_sponsor_id,
-        0,
         'Not Applied',
         param_first_name,
         param_last_name
@@ -223,6 +218,46 @@ BEGIN
     VALUES (
         param_user_id,
         param_status
+    );
+
+    COMMIT;
+END //
+
+CREATE PROCEDURE EnrollDriverWithSponsor(
+    IN param_driver_id INT,
+    IN param_sponsor_id INT
+)
+BEGIN
+    DECLARE val_has_primary BOOLEAN;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM DriverSponsor
+        WHERE driver_id = param_driver_id
+          AND is_primary = TRUE
+    ) INTO val_has_primary;
+
+    INSERT INTO DriverSponsor (
+        driver_id,
+        sponsor_id,
+        points,
+        status,
+        is_primary
+    )
+    VALUES (
+        param_driver_id,
+        param_sponsor_id,
+        0,
+        'Active',
+        NOT val_has_primary
     );
 
     COMMIT;
