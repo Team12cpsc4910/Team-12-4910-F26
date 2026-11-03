@@ -24,6 +24,16 @@
         </div>
       {% endif %}
       <h1 style="text-align: center;">Driver Dashboard</h1>
+      {# Drop alert: shown on every visit while the driver is dropped, with no way to turn it off #}
+      {% if dropped %}
+      <div class="alert-message" role="alert">
+        <strong>Account status changed:</strong>
+        {{ dropped_by or 'Your sponsor' }} dropped you from their program.
+        You no longer have access to their catalog or rewards, and they can't change your points.
+        Your points balance and history are kept. You can apply to a sponsor from the
+        <a href="/applications">Applications</a> tab.
+      </div>
+      {% endif %}
       {% for category, message in get_flashed_messages(with_categories=true) %}
       <p role="status">{{ message }}</p>
       {% endfor %}

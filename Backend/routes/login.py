@@ -130,6 +130,7 @@ def dashboard():
         redemptions = []
         approved = False
         dropped = False
+        dropped_by = None
         rejected = False
         conn = None
 
@@ -141,8 +142,11 @@ def dashboard():
                     SELECT d.driver_id,
                            d.points,
                            d.sponsor_id,
-                           d.application_status
+                           d.application_status,
+                           s.sponsor_name
                     FROM DriverUser d
+                    LEFT JOIN Sponsor s
+                        ON d.sponsor_id = s.sponsor_id
                     WHERE d.user_id = %s
                 """, (session.get('user_id', 0),))
 
@@ -182,6 +186,8 @@ def dashboard():
 
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
+                    # A dropped driver keeps the sponsor_id of the sponsor that dropped them
+                    dropped_by = driver['sponsor_name'] if dropped else None
                     rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
@@ -213,6 +219,7 @@ def dashboard():
             redemptions=redemptions,
             approved=approved,
             dropped=dropped,
+            dropped_by=dropped_by,
             rejected=rejected
         )
 

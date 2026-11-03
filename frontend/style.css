@@ -313,6 +313,22 @@ a:hover {
   color: #f8fafc;
 }
 
+/* Important account notices, e.g. a driver being dropped by their sponsor */
+.alert-message {
+  margin: 15px auto 25px;
+  padding: 16px 18px;
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  border-left: 5px solid #f87171;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.alert-message strong {
+  color: #ffffff;
+}
+
 .success-message {
   max-width: 420px;
   margin: 15px auto;
