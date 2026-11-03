@@ -1,15 +1,13 @@
-"""Reward catalog, point redemption and sponsor fulfillment.
-
-All money-like operations use MySQL row locks and a single database transaction.
-The logged-in identity comes from security.load_user, not untrusted form fields.
-"""
-
 import json
 import os
 import re
 import secrets
+
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from datetime import datetime, timezone
+
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from flask import Blueprint, abort, flash, g, redirect, request, render_template
@@ -185,114 +183,356 @@ def get_sponsor_catalog(user_id):
     finally:
         conn.close()
 
-def fetch_rawg(path, params=None):
-    """Retrieve game metadata server-side so the RAWG key stays private."""
+# GG.deals API configuration
 
-    api_key = os.environ.get('RAWG_API_KEY', '').strip()
+GGDEALS_PRICES_URL = "https://api.gg.deals/v1/prices/by-slug/"
+
+POINTS_PER_USD = Decimal("100")
+
+MAX_REWARD_POINTS = 1000000
+
+
+class GameLookupError(ValueError):
+    pass
+
+
+def ggdeals_slug(value):
+    """
+    Convert a game name or GG.deals URL into a valid game slug.
+    """
+
+    value = (value or "").strip()
+
+    if not value or len(value) > 180:
+        raise GameLookupError(
+            "Enter a game title, slug, or GG.deals game link."
+        )
+
+    # Handle full GG.deals URLs
+    if value.startswith(("https://", "http://")):
+
+        try:
+            parsed = urlsplit(value)
+
+        except ValueError:
+            raise GameLookupError(
+                "Use a valid GG.deals game link."
+            ) from None
+
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname not in ("gg.deals", "www.gg.deals")
+            or parsed.username
+            or parsed.password
+        ):
+            raise GameLookupError(
+                "Use an HTTPS game link from gg.deals."
+            )
+
+        match = re.fullmatch(
+            r"/game/([a-z0-9]+(?:-[a-z0-9]+)*)/?",
+            parsed.path
+        )
+
+        if not match:
+            raise GameLookupError(
+                "Paste a valid GG.deals game link."
+            )
+
+        return match.group(1)
+
+    # Reject invalid input
+    if "/" in value or "?" in value or "#" in value:
+        raise GameLookupError(
+            "Enter a game name or a valid GG.deals game link."
+        )
+
+    # Convert simple game names into slugs
+    slug = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        value.lower()
+    ).strip("-")
+
+    if not slug or len(slug) > 100:
+        raise GameLookupError(
+            "Please use the full GG.deals game link instead."
+        )
+
+    return slug
+
+
+def fetch_ggdeals_game(slug):
+    """
+    Retrieve game pricing from the GG.deals API.
+    Convert USD pricing into driver reward points.
+    """
+
+    if not re.fullmatch(
+        r"[a-z0-9]+(?:-[a-z0-9]+)*",
+        slug or ""
+    ):
+        raise GameLookupError("Invalid game slug.")
+
+    # Retrieve API key from environment
+    api_key = os.environ.get(
+        "GGDEALS_API_KEY", ""
+    ).strip()
 
     if not api_key:
-        raise RuntimeError('RAWG_API_KEY is not configured on the server.')
+        raise GameLookupError(
+            "GGDEALS_API_KEY is not configured on the backend server."
+        )
 
-    query = urlencode({'key': api_key, **(params or {})})
-
-    url = f'https://api.rawg.io/api/{path}?{query}'
-
-    req = Request(url, headers={
-        'Accept': 'application/json',
-        'User-Agent': 'Team12-Game-Catalog/1.0',
+    # Build GG.deals API request
+    url = GGDEALS_PRICES_URL + "?" + urlencode({
+        "key": api_key,
+        "slugs": slug,
+        "region": "us"
     })
 
+    req = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "Team12-Game-Catalog/1.0"
+        }
+    )
+
+    # Make API request
     try:
         with urlopen(req, timeout=8) as response:
-            return json.load(response)
+            payload = json.load(response)
 
-    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-        raise RuntimeError(
-            'RAWG is unavailable. Check your API key or try again later.'
-        ) from exc
+    except HTTPError as exc:
 
-@rewards_bp.get('/sponsor/games')
+        if exc.code == 429:
+            raise GameLookupError(
+                "GG.deals rate limit reached. Please try again later."
+            ) from None
+
+        if exc.code in (401, 403):
+            raise GameLookupError(
+                "GG.deals rejected the API key."
+            ) from None
+
+        raise GameLookupError(
+            "GG.deals is currently unavailable."
+        ) from None
+
+    except (URLError, TimeoutError, OSError, ValueError):
+        raise GameLookupError(
+            "GG.deals is currently unavailable."
+        ) from None
+
+    # Validate response
+    if (
+        not isinstance(payload, dict)
+        or payload.get("success") is not True
+    ):
+        raise GameLookupError(
+            "GG.deals returned an error."
+        )
+
+    data = payload.get("data")
+
+    result = (
+        data.get(slug)
+        if isinstance(data, dict)
+        else None
+    )
+
+    if not isinstance(result, dict):
+        return None
+
+    # Get game title
+    title = str(
+        result.get("title") or ""
+    ).strip()[:100]
+
+    if not title:
+        raise GameLookupError(
+            "GG.deals did not return a game title."
+        )
+
+    # Get game prices
+    prices = result.get("prices") or {}
+
+    if not isinstance(prices, dict):
+        raise GameLookupError(
+            "GG.deals returned invalid price data."
+        )
+
+    # Use current retail price
+    raw_price = prices.get("currentRetail")
+
+    price_usd = None
+    points = None
+
+    if raw_price is not None:
+
+        if prices.get("currency") != "USD":
+            raise GameLookupError(
+                "GG.deals did not return prices in USD."
+            )
+
+        try:
+            amount = Decimal(str(raw_price))
+
+            if not amount.is_finite() or amount < 0:
+                raise InvalidOperation()
+
+            if amount > 0:
+
+                # Convert dollars into points
+                computed = int(
+                    (
+                        amount * POINTS_PER_USD
+                    ).to_integral_value(
+                        rounding=ROUND_HALF_UP
+                    )
+                )
+
+                if not 1 <= computed <= MAX_REWARD_POINTS:
+                    raise GameLookupError(
+                        "This game price is outside the supported points range."
+                    )
+
+                price_usd = amount
+                points = computed
+
+        except (InvalidOperation, ValueError, OverflowError):
+            raise GameLookupError(
+                "GG.deals returned an invalid game price."
+            ) from None
+
+    # Create game URL
+    canonical = (
+        "https://gg.deals/game/" + slug + "/"
+    )
+
+    supplied_url = str(
+        result.get("url") or ""
+    )
+
+    parsed_link = urlsplit(supplied_url)
+
+    game_url = (
+        supplied_url
+        if (
+            parsed_link.scheme == "https"
+            and parsed_link.hostname in (
+                "gg.deals",
+                "www.gg.deals"
+            )
+            and parsed_link.path.startswith("/game/")
+        )
+        else canonical
+    )
+
+    return {
+        "slug": slug,
+        "name": title,
+        "url": game_url,
+        "price_usd": price_usd,
+        "point_cost": points
+    }
+
+
+# Sponsor game lookup page
+
+@rewards_bp.get("/sponsor/games")
 @login_required
-def search_rawg_games():
+def search_ggdeals_games():
 
-    require_role('Sponsor')
+    require_role("Sponsor")
 
-    term = request.args.get('search', '').strip()[:80]
+    term = request.args.get(
+        "search", ""
+    ).strip()[:180]
 
-    games = []
+    game = None
     error = None
 
     if term:
-        if len(term) < 2:
-            error = 'Enter at least two characters to search.'
-        else:
-            try:
-                data = fetch_rawg('games', {
-                    'search': term,
-                    'page_size': 10
-                })
 
-                games = data.get('results', [])
+        try:
+            slug = ggdeals_slug(term)
 
-            except RuntimeError as exc:
-                error = str(exc)
+            game = fetch_ggdeals_game(slug)
+
+            if game is None:
+                error = (
+                    "No matching GG.deals game was found. "
+                    "Try pasting its full GG.deals game page link."
+                )
+
+        except GameLookupError as exc:
+            error = str(exc)
 
     return render_template(
-        'sponsor_games.html',
-        games=games,
+        "sponsor_games.html",
+        game=game,
         search=term,
         error=error
     )
 
-@rewards_bp.post('/sponsor/catalog/rawg')
-@login_required
-def add_rawg_reward():
 
-    require_role('Sponsor')
+# Add GG.deals game to sponsor catalog
+
+@rewards_bp.post("/sponsor/catalog/ggdeals")
+@login_required
+def add_ggdeals_reward():
+
+    require_role("Sponsor")
+
     check_csrf()
 
-    raw_id = request.form.get('game_id', '').strip()
-    raw_cost = request.form.get('point_cost', '').strip()
-
-    if (not raw_id.isascii() or not raw_id.isdigit() or len(raw_id) > 12 or
-            int(raw_id) < 1 or not raw_cost.isascii() or not raw_cost.isdigit() or
-            not 1 <= int(raw_cost) <= 1000000):
-
-        flash(
-            'Choose a valid game and point cost between 1 and 1,000,000.',
-            'error'
+    try:
+        slug = ggdeals_slug(
+            request.form.get("game_slug", "")
         )
 
-        return redirect('/sponsor/games')
+        # Fetch the current price again
+        game = fetch_ggdeals_game(slug)
 
-    try:
-        game = fetch_rawg(f'games/{raw_id}')
+        if not game:
+            raise GameLookupError(
+                "The selected game could not be found on GG.deals."
+            )
 
-    except RuntimeError as exc:
-        flash(str(exc), 'error')
-        return redirect('/sponsor/games')
+        if game["point_cost"] is None:
+            raise GameLookupError(
+                "No positive US retail price is available for this game."
+            )
 
-    name = str(game.get('name') or '').strip()[:100]
+    except GameLookupError as exc:
 
-    if not name:
-        flash('RAWG did not return a game name.', 'error')
-        return redirect('/sponsor/games')
+        flash(str(exc), "error")
 
-    description = str(game.get('description_raw') or '')[:255]
+        return redirect("/sponsor/games")
 
-    image_url = str(game.get('background_image') or '')[:500]
+    # Record when the price was retrieved
+    checked_at = datetime.now(
+        timezone.utc
+    ).strftime("%Y-%m-%d %H:%M UTC")
 
-    if not image_url.startswith('https://'):
-        image_url = None
+    description = (
+        f'GG.deals US retail price: ${game["price_usd"]:.2f} '
+        f'({checked_at}); 100 points per USD. '
+        f'Sponsor fulfillment required.'
+    )
 
+    # Save game to existing database
     conn = get_db_connection()
 
     try:
+
         with conn.cursor() as cur:
 
             sponsor_id = sponsor_id_for_user(
                 cur,
-                g.user['user_id']
+                g.user["user_id"]
             )
 
             if sponsor_id is None:
@@ -300,30 +540,49 @@ def add_rawg_reward():
 
             cur.execute("""
                 INSERT INTO ProductCatalog
-                    (sponsor_id, product_name, description,
-                     point_cost, availability, image_url)
-                VALUES (%s, %s, %s, %s, TRUE, %s)
+                    (
+                        sponsor_id,
+                        product_name,
+                        description,
+                        point_cost,
+                        availability,
+                        image_url
+                    )
+                VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    TRUE,
+                    NULL
+                )
             """, (
                 sponsor_id,
-                name,
+                game["name"],
                 description,
-                int(raw_cost),
-                image_url
+                game["point_cost"]
             ))
 
         conn.commit()
 
     except Exception:
+
         conn.rollback()
         raise
 
     finally:
+
         conn.close()
 
-    flash(f'{name} added to your reward catalog.', 'success')
+    flash(
+        f'{game["name"]} added for '
+        f'{game["point_cost"]} points '
+        f'(based on ${game["price_usd"]:.2f} USD).',
+        "success"
+    )
 
-    return redirect('/dashboard')
-
+    return redirect("/dashboard")
+    
 @rewards_bp.post('/sponsor/catalog')
 @login_required
 def add_catalog_reward():
