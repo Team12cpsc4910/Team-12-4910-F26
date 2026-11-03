@@ -55,6 +55,55 @@
           {% endif %}
         </tbody>
       </table>
+      <h2>Approved Applications</h2>
+      <table class="catalog-table">
+          <thead>
+              <tr>
+                  <th>Sponsor</th>
+                  <th>Reviewed</th>
+                  <th>Status</th>
+                  <th>Catalog</th>
+              </tr>
+          </thead>
+      
+          <tbody>
+              {% if approved %}
+      
+                  {% for app in approved %}
+                  <tr>
+                      <td>{{ app.sponsor_name }}</td>
+      
+                      <td>{{ app.decided or '—' }}</td>
+      
+                      <td>
+                          <span class="status approved">
+                              {{ app.state | capitalize }}
+                          </span>
+                      </td>
+      
+                      <td>
+                          {% if app.is_current_sponsor %}
+                              <a href="/driver/catalog">
+                                  View My Sponsor's Catalog
+                              </a>
+                          {% else %}
+                              Previous sponsor
+                          {% endif %}
+                      </td>
+                  </tr>
+                  {% endfor %}
+      
+              {% else %}
+      
+                  <tr>
+                      <td colspan="4">
+                          No approved applications yet.
+                      </td>
+                  </tr>
+      
+              {% endif %}
+          </tbody>
+      </table>
       <h2>Rejected Applications</h2>
       <table class="catalog-table">
         <thead>
