@@ -183,6 +183,61 @@ def get_sponsor_catalog(user_id):
     finally:
         conn.close()
 
+@rewards_bp.get('/driver/catalog')
+@login_required
+def driver_catalog():
+    require_role('Driver')
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cur:
+
+            cur.execute("""
+                SELECT d.sponsor_id,
+                       d.application_status,
+                       d.points,
+                       s.sponsor_name
+                FROM DriverUser d
+                LEFT JOIN Sponsor s
+                    ON s.sponsor_id = d.sponsor_id
+                WHERE d.user_id = %s
+                LIMIT 1
+            """, (g.user['user_id'],))
+
+            driver = cur.fetchone()
+
+            catalog = []
+
+            if (
+                driver
+                and driver['application_status'] == 'Approved'
+                and driver['sponsor_id'] is not None
+            ):
+
+                cur.execute("""
+                    SELECT product_id,
+                           product_name,
+                           description,
+                           point_cost,
+                           image_url,
+                           availability AS available
+                    FROM ProductCatalog
+                    WHERE sponsor_id = %s
+                    ORDER BY product_name
+                """, (driver['sponsor_id'],))
+
+                catalog = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    return render_template(
+        'driver_catalog.html',
+        driver=driver,
+        catalog=catalog
+    )
+
 # GG.deals API configuration
 
 GGDEALS_PRICES_URL = "https://api.gg.deals/v1/prices/by-slug/"
