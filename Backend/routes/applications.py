@@ -40,6 +40,46 @@ def get_pending_applications(username):
             conn.close()
     return applications
 
+def get_approved_applications(username):
+    applications = []
+    conn = None
+
+    try:
+        conn = get_db_connection()
+
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.app_id,
+                       s.sponsor_name,
+                       a.state,
+                       (SELECT MAX(l.datetime)
+                        FROM DriverAppLog l
+                        WHERE l.app_id = a.app_id) AS decided,
+                       CASE
+                           WHEN d.application_status = 'Approved'
+                           AND d.sponsor_id = a.sponsor_id
+                           THEN 1 ELSE 0
+                       END AS is_current_sponsor
+                FROM DriverApp a
+                JOIN DriverUser d ON a.driver_id = d.driver_id
+                JOIN UserAccount u ON d.user_id = u.user_id
+                JOIN Sponsor s ON a.sponsor_id = s.sponsor_id
+                WHERE u.username = %s
+                AND LOWER(a.state) = 'approved'
+                ORDER BY a.app_id DESC
+            """, (username,))
+
+            applications = cur.fetchall()
+
+    except Exception as e:
+        print(f"Database error: {e}")
+
+    finally:
+        if conn and conn.open:
+            conn.close()
+
+    return applications
+
 def get_rejected_applications(username):
     applications = []
     conn = None
@@ -72,10 +112,12 @@ def applications():
     if 'username' not in session:
         return redirect('/')
 
-    return render_template('applications.html',
-pending=get_pending_applications(session['username']),
-rejected=get_rejected_applications(session['username']))
-
+    return render_template(
+        'applications.html',
+        pending=get_pending_applications(session['username']),
+        approved=get_approved_applications(session['username']),
+        rejected=get_rejected_applications(session['username'])
+    )
 
 # Sponsor dropdown for the application form; an empty list just shows "no sponsors" instead of crashing
 def get_sponsors():
