@@ -65,6 +65,15 @@
                                   {{ 'Disable' if item.available else 'Enable' }}
                               </button>
                           </form>
+
+                          <form method="POST"
+                                action="/sponsor/catalog/{{ item.product_id }}/remove"
+                                onsubmit="return confirm('Remove this reward from your catalog? Rewards that drivers have already ordered can only be disabled.');">
+                              <input type="hidden"
+                                     name="csrf_token"
+                                     value="{{ csrf_token() }}">
+                              <button type="submit" class="danger">Remove</button>
+                          </form>
                       </td>
                   </tr>
                   {% endfor %}

@@ -10,6 +10,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+import pymysql
 from flask import Blueprint, abort, flash, g, redirect, request, render_template
 
 from database import get_db_connection
@@ -753,6 +754,56 @@ def toggle_catalog_reward(product_id):
         raise
     finally:
         conn.close()
+    return redirect('/dashboard')
+
+
+# Remove Reward: retires a product from the sponsor's catalog. A product drivers have already
+# redeemed can't be deleted (RewardRedemption keeps a foreign key to it), so it stays and the
+# sponsor is told to disable it instead, which keeps drivers' order history intact.
+@rewards_bp.post('/sponsor/catalog/<int:product_id>/remove')
+@login_required
+def remove_catalog_reward(product_id):
+    require_role('Sponsor')
+    check_csrf()
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            sponsor_id = sponsor_id_for_user(cur, g.user['user_id'])
+            if sponsor_id is None:
+                abort(403)
+            # A removal can only affect this sponsor's own rewards.
+            cur.execute("""
+                SELECT product_name FROM ProductCatalog
+                WHERE product_id = %s AND sponsor_id = %s
+                FOR UPDATE
+            """, (product_id, sponsor_id))
+            product = cur.fetchone()
+            if not product:
+                abort(404)
+
+            cur.execute('SELECT COUNT(*) AS orders FROM RewardRedemption WHERE product_id = %s', (product_id,))
+            orders = cur.fetchone()['orders']
+            if not orders:
+                cur.execute('DELETE FROM ProductCatalog WHERE product_id = %s AND sponsor_id = %s',
+                            (product_id, sponsor_id))
+        conn.commit()
+    except pymysql.IntegrityError as exc:
+        conn.rollback()
+        # A driver redeemed it between the check and the delete
+        if exc.args[0] != 1451:
+            raise
+        orders = 1
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    if orders:
+        flash(f"{product['product_name']} has reward orders, so it can't be removed. "
+              'Disable it instead to stop new redemptions.', 'error')
+    else:
+        flash(f"{product['product_name']} was removed from your catalog.", 'success')
     return redirect('/dashboard')
 
 
