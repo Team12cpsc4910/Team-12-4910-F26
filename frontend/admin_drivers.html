@@ -20,6 +20,10 @@
       <h1 style="text-align: center;">Drivers</h1>
       <p style="text-align: center;">Every driver account. Use "View as Driver" to see and use the site from that driver's perspective.</p>
 
+      {% if password_reset %}
+        <p class="success-message">Password reset. Give the driver their new password.</p>
+      {% endif %}
+
       {% if locked %}
         <p class="error-message">That driver's account is locked, so it can't be viewed. Unlock it first.</p>
       {% endif %}
@@ -57,6 +61,9 @@
                   <button type="submit">View as Driver</button>
                 </form>
                 {% endif %}
+                <form action="/admin/users/{{ driver.user_id }}/reset-password" method="get">
+                  <button type="submit">Reset Password</button>
+                </form>
               </td>
             </tr>
             {% endfor %}

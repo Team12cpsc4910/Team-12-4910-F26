@@ -43,11 +43,12 @@
         <dt>Failed Logins</dt>
         <dd>{{ sponsor_user.failed_logins }}</dd>
       </dl>
-
       <form action="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}/edit" method="get">
         <button type="submit">Edit Sponsor User</button>
       </form>      
-
+      <form action="/admin/users/{{ sponsor_user.user_id }}/reset-password" method="get">
+        <button type="submit">Reset Password</button>
+      </form>
       <p style="text-align: center;"><a href="/admin/sponsor-users">Back to Sponsor Users</a></p>
     </main>
   </div>
