@@ -193,6 +193,27 @@ def like_pattern(keyword):
     return f'%{escaped}%'
 
 
+# The logged-in driver's catalog access info (sponsor, status, points), shared by the catalog list
+# and the product details page so both apply the same access rules.
+def get_catalog_driver(cur, user_id):
+    cur.execute("""
+        SELECT d.sponsor_id,
+               d.application_status,
+               d.points,
+               s.sponsor_name
+        FROM DriverUser d
+        LEFT JOIN Sponsor s
+            ON s.sponsor_id = d.sponsor_id
+        WHERE d.user_id = %s
+        LIMIT 1
+    """, (user_id,))
+    return cur.fetchone()
+
+
+def can_view_catalog(driver):
+    return bool(driver and driver['application_status'] == 'Approved' and driver['sponsor_id'] is not None)
+
+
 @rewards_bp.get('/driver/catalog')
 @login_required
 def driver_catalog():
@@ -206,27 +227,11 @@ def driver_catalog():
     try:
         with conn.cursor() as cur:
 
-            cur.execute("""
-                SELECT d.sponsor_id,
-                       d.application_status,
-                       d.points,
-                       s.sponsor_name
-                FROM DriverUser d
-                LEFT JOIN Sponsor s
-                    ON s.sponsor_id = d.sponsor_id
-                WHERE d.user_id = %s
-                LIMIT 1
-            """, (g.user['user_id'],))
-
-            driver = cur.fetchone()
+            driver = get_catalog_driver(cur, g.user['user_id'])
 
             catalog = []
 
-            if (
-                driver
-                and driver['application_status'] == 'Approved'
-                and driver['sponsor_id'] is not None
-            ):
+            if can_view_catalog(driver):
 
                 query = """
                     SELECT product_id,
@@ -258,6 +263,40 @@ def driver_catalog():
         search=search,
         max_search_length=MAX_CATALOG_SEARCH_LENGTH
     )
+
+
+# Product Details: one product from the driver's own sponsor's catalog, with everything the
+# driver needs to decide whether to redeem it.
+@rewards_bp.get('/driver/catalog/<int:product_id>')
+@login_required
+def driver_product(product_id):
+    require_role('Driver')
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            driver = get_catalog_driver(cur, g.user['user_id'])
+            # Not approved yet, dropped, or rejected: the catalog page explains why
+            if not can_view_catalog(driver):
+                return redirect('/driver/catalog')
+
+            cur.execute("""
+                SELECT product_id,
+                       product_name,
+                       description,
+                       point_cost,
+                       image_url,
+                       availability AS available
+                FROM ProductCatalog
+                WHERE product_id = %s AND sponsor_id = %s
+            """, (product_id, driver['sponsor_id']))
+            product = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not product:
+        abort(404)
+    return render_template('driver_product.html', driver=driver, item=product)
 
 # GG.deals API configuration
 

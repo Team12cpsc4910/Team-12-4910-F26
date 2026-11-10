@@ -133,7 +133,7 @@
                                 {% endif %}
 
                                 <strong>
-                                    {{ item.product_name }}
+                                    <a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a>
                                 </strong>
 
                                 {% if item.description %}
@@ -144,6 +144,9 @@
                                     </small>
 
                                 {% endif %}
+
+                                <br>
+                                <small><a href="/driver/catalog/{{ item.product_id }}">View Details</a></small>
 
                             </td>
 

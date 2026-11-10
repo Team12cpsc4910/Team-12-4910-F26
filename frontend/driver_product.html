@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{{ item.product_name }}</title>
+
+    <link rel="stylesheet" href="/style.css?v=5">
+</head>
+
+<body>
+
+<div class="container">
+
+    <nav>
+        <a href="/dashboard">Driver Dashboard</a>
+        <a href="/driver/catalog">My Sponsor's Catalog</a>
+        <a href="/applications">Applications</a>
+        <a href="/logout">Log Out</a>
+    </nav>
+
+    <main>
+
+        <h1>{{ item.product_name }}</h1>
+
+        <!-- Image -->
+
+        {% if item.image_url %}
+            <img src="{{ item.image_url }}"
+                 alt="{{ item.product_name }}"
+                 class="product-image">
+        {% else %}
+            <div class="product-image-placeholder">No image available</div>
+        {% endif %}
+
+        <!-- Description -->
+
+        <h2>Description</h2>
+        {% if item.description %}
+            <p class="application-message">{{ item.description }}</p>
+        {% else %}
+            <p class="catalog-empty">No description provided.</p>
+        {% endif %}
+
+        <!-- Price and Availability -->
+
+        <h2>Price &amp; Availability</h2>
+        <dl>
+            <dt>Price</dt>
+            <dd>{{ item.point_cost }} Points</dd>
+
+            <dt>Your Points Balance</dt>
+            <dd>
+                {{ driver.points }} Points
+                {% if driver.points >= item.point_cost %}
+                    ({{ driver.points - item.point_cost }} left after redeeming)
+                {% else %}
+                    ({{ item.point_cost - driver.points }} more needed)
+                {% endif %}
+            </dd>
+
+            <dt>Availability</dt>
+            <dd>
+                {% if item.available %}
+                    <span class="status in-stock">In Stock</span>
+                {% else %}
+                    <span class="status out-of-stock">Unavailable</span>
+                {% endif %}
+            </dd>
+
+            <dt>Sponsor</dt>
+            <dd>{{ driver.sponsor_name }}</dd>
+        </dl>
+
+        <!-- Redemption: same rules as the catalog list -->
+
+        {% if item.available and item.point_cost > 0 and driver.points >= item.point_cost %}
+            <form method="POST"
+                  action="/rewards/{{ item.product_id }}/redeem"
+                  class="login-form"
+                  onsubmit="return confirm('Redeem this reward for {{ item.point_cost }} points?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
+                <button type="submit">Redeem for {{ item.point_cost }} Points</button>
+            </form>
+        {% elif not item.available or item.point_cost <= 0 %}
+            <p class="catalog-empty">This reward is currently unavailable.</p>
+        {% else %}
+            <p class="catalog-empty">You don't have enough points to redeem this reward yet.</p>
+        {% endif %}
+
+        <p style="text-align: center;"><a href="/driver/catalog">Back to Catalog</a></p>
+
+    </main>
+
+</div>
+
+</body>
+</html>
