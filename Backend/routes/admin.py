@@ -506,3 +506,28 @@ def admin_reset_password(user_id):
             error = str(exc)
 
     return render_template('admin_reset_password.html', target=target, error=error), (400 if error else 200)
+
+def get_sales_by_sponsor():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT s.sponsor_id, s.sponsor_name,
+                       COUNT(r.redemption_id) AS total_redemptions,
+                       COALESCE(SUM(r.points_spent), 0) AS total_points,
+                       COALESCE(SUM(r.points_spent), 0) * s.point_value AS total_sales
+                FROM Sponsor s
+                LEFT JOIN RewardRedemption r ON r.sponsor_id = s.sponsor_id
+                GROUP BY s.sponsor_id, s.sponsor_name, s.point_value
+                ORDER BY s.sponsor_name
+            """)
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+@admin_bp.route('/admin/reports')
+@login_required
+def admin_reports():
+    require_admin()
+    return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor())
