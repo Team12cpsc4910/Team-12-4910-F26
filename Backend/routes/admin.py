@@ -525,7 +525,7 @@ def get_sales_by_sponsor():
     finally:
         conn.close()
 
-def get_sales_by_driver():
+def get_sales_by_driver(sponsor_id=None):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
@@ -537,9 +537,10 @@ def get_sales_by_driver():
                 FROM RewardRedemption r
                 JOIN DriverUser d ON r.driver_id = d.driver_id
                 JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                WHERE %s IS NULL OR r.sponsor_id = %s
                 GROUP BY d.driver_id, d.first_name, d.last_name, s.sponsor_id, s.sponsor_name, s.point_value
                 ORDER BY s.sponsor_name, total_points DESC, d.last_name, d.first_name
-            """)
+            """, (sponsor_id, sponsor_id))
             return cur.fetchall()
     finally:
         conn.close()
@@ -548,5 +549,7 @@ def get_sales_by_driver():
 @login_required
 def admin_reports():
     require_admin()
+    sponsor_id = request.args.get('sponsor_id', type=int)
     return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor(),
-                           driver_sales=get_sales_by_driver())
+                           driver_sales=get_sales_by_driver(sponsor_id),
+                           selected_sponsor_id=sponsor_id)

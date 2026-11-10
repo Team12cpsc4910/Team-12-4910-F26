@@ -48,6 +48,18 @@
         </tbody>
       </table>
       <h2>Sales by Driver</h2>
+      <form action="/admin/reports" method="get" class="login-form">
+        <div class="form-group">
+          <label for="sponsor_id">Sponsor:</label>
+          <select id="sponsor_id" name="sponsor_id">
+            <option value="">All Sponsors</option>
+            {% for sponsor in sponsor_sales %}
+              <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit">Show Sales</button>
+      </form>
       <table class="catalog-table">
         <thead>
           <tr>
@@ -71,7 +83,7 @@
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="5" class="catalog-empty">There are no driver sales yet.</td>
+              <td colspan="5" class="catalog-empty">There are no driver sales{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</td>
             </tr>
           {% endif %}
         </tbody>
