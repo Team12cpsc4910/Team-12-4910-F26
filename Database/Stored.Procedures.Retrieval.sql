@@ -121,4 +121,43 @@ BEGIN
     ORDER BY PointChangeLog.`datetime` DESC;
 END //
 
+CREATE PROCEDURE GetAdminLoginLogs(
+    IN param_user_id INT,
+    IN param_status VARCHAR(20),
+    IN param_start_date DATETIME,
+    IN param_end_date DATETIME
+)
+BEGIN
+    SELECT l.login_log_id, u.username, l.status, l.datetime
+    FROM LoginAttemptLog l
+    INNER JOIN UserAccount u ON l.user_id = u.user_id
+    WHERE (param_user_id IS NULL OR l.user_id = param_user_id)
+      AND (param_status IS NULL OR LOWER(l.status) = LOWER(param_status))
+      AND (param_start_date IS NULL OR l.datetime >= param_start_date)
+      AND (param_end_date IS NULL OR l.datetime <= param_end_date)
+    ORDER BY l.datetime DESC;
+END//
+
+CREATE PROCEDURE GetAdminPasswordChangeLogs(
+    IN param_user_id INT,
+    IN param_change_type VARCHAR(30),
+    IN param_start_date DATETIME,
+    IN param_end_date DATETIME
+)
+BEGIN
+    SELECT p.password_log_id, 
+           u.username AS user_changed, 
+           c.username AS changed_by_user, 
+           p.change_type, 
+           p.datetime
+    FROM PasswordChangeLog p
+    INNER JOIN UserAccount u ON p.user_id = u.user_id
+    INNER JOIN UserAccount c ON p.changed_by_user_id = c.user_id
+    WHERE (param_user_id IS NULL OR p.user_id = param_user_id)
+      AND (param_change_type IS NULL OR LOWER(p.change_type) = LOWER(param_change_type))
+      AND (param_start_date IS NULL OR p.datetime >= param_start_date)
+      AND (param_end_date IS NULL OR p.datetime <= param_end_date)
+    ORDER BY p.datetime DESC;
+END//
+
 DELIMITER ;
