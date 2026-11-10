@@ -322,8 +322,7 @@ def get_drivers():
 def admin_sponsor_users():
     require_admin()
     return render_template('admin_sponsor_users.html', sponsor_users=get_sponsor_users(),
-
-password_reset=request.args.get('password_reset') == '1')
+                           password_reset=request.args.get('password_reset') == '1')
 
 @admin_bp.route('/admin/sponsor-users/<int:sponsor_user_id>')
 @login_required

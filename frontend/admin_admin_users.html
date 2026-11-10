@@ -19,6 +19,10 @@
       <h1 style="text-align: center;">Admin Users</h1>
       <p style="text-align: center;">Every administrator account. Select an admin to view their information.</p>
 
+      {% if password_reset %}
+        <p class="success-message">Password reset. Give the sponsor user their new password.</p>
+      {% endif %}
+      
       <table class="catalog-table">
         <thead>
           <tr>
