@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reports</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/drivers">Drivers</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Reports</h1>
+
+      <h2>Sales by Sponsor</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Sponsor</th>
+            <th>Redemptions</th>
+            <th>Points Spent</th>
+            <th>Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if sponsor_sales %}
+            {% for sponsor in sponsor_sales %}
+            <tr>
+              <td>{{ sponsor.sponsor_name }}</td>
+              <td>{{ sponsor.total_redemptions }}</td>
+              <td>{{ sponsor.total_points }}</td>
+              <td>${{ '%.2f' | format(sponsor.total_sales) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">There are no sponsors yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <h2>Sales by Driver</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Sponsor</th>
+            <th>Redemptions</th>
+            <th>Points Spent</th>
+            <th>Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if driver_sales %}
+            {% for sale in driver_sales %}
+            <tr>
+              <td>{{ sale.first_name }} {{ sale.last_name }}</td>
+              <td>{{ sale.sponsor_name }}</td>
+              <td>{{ sale.total_redemptions }}</td>
+              <td>{{ sale.total_points }}</td>
+              <td>${{ '%.2f' | format(sale.total_sales) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no driver sales yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

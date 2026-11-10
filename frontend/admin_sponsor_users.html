@@ -18,6 +18,10 @@
       <h1 style="text-align: center;">Sponsor Users</h1>
       <p style="text-align: center;">Every sponsor user account. Select a user to view their information.</p>
 
+      {% if password_reset %}
+        <p class="success-message">Password reset. Give the sponsor user their new password.</p>
+      {% endif %}
+
       <table class="catalog-table">
         <thead>
           <tr>

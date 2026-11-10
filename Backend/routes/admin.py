@@ -58,7 +58,7 @@ def get_sponsor_user(sponsor_user_id):
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT su.sponsor_user_id, su.first_name, su.last_name,
+                SELECT su.sponsor_user_id, su.user_id, su.first_name, su.last_name,
                        u.username, u.email, u.account_locked, u.failed_logins,
                        s.sponsor_id, s.sponsor_name
                 FROM SponsorUser su
@@ -205,7 +205,7 @@ def update_admin_user(admin_user_id, values):
     finally:
         conn.close()
 
-def change_own_password(user_id, current_password, new_password, confirm_password):
+def validate_new_password(new_password, confirm_password):
     if not 8 <= len(new_password) <= 128:
         raise AdminError('Password must be 8–128 characters.')
     if not any(c.isupper() for c in new_password):
@@ -215,7 +215,12 @@ def change_own_password(user_id, current_password, new_password, confirm_passwor
     if new_password != confirm_password:
         raise AdminError('New passwords do not match.')
 
+
+def change_own_password(user_id, current_password, new_password, confirm_password):
+    validate_new_password(new_password, confirm_password)
+
     conn = get_db_connection()
+
     try:
         with conn.cursor() as cur:
             cur.execute('SELECT password_hash FROM UserAccount WHERE user_id = %s FOR UPDATE', (user_id,))
@@ -242,6 +247,54 @@ def change_own_password(user_id, current_password, new_password, confirm_passwor
     finally:
         conn.close()
 
+# The driver or sponsor account an admin is resetting, or None if it doesn't exist or is an admin account.
+def get_resettable_user(user_id):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT user_id, username, user_type FROM UserAccount
+                WHERE user_id = %s AND LOWER(user_type) IN ('driver', 'sponsor')
+            """, (user_id,))
+            return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def reset_user_password(admin_user_id, user_id, new_password, confirm_password):
+    validate_new_password(new_password, confirm_password)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT user_id FROM UserAccount
+                WHERE user_id = %s AND LOWER(user_type) IN ('driver', 'sponsor')
+                FOR UPDATE
+            """, (user_id,))
+            if not cur.fetchone():
+                return False
+
+            cur.execute('UPDATE UserAccount SET password_hash = %s, failed_logins = 0 WHERE user_id = %s',
+                        (generate_password_hash(new_password), user_id))
+
+            try:
+                cur.execute("""
+                    INSERT INTO PasswordChangeLog (user_id, changed_by_user_id, change_type)
+                    VALUES (%s, %s, 'Admin Reset')
+                """, (user_id, admin_user_id))
+            except pymysql.MySQLError as e:
+                print(f"Password change log error: {e}")
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+
 def get_drivers():
     drivers = []
     conn = None
@@ -249,7 +302,7 @@ def get_drivers():
         conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT d.driver_id, d.first_name, d.last_name, d.points, d.application_status,
+                SELECT d.driver_id, d.user_id, d.first_name, d.last_name, d.points, d.application_status,
                        u.username, u.account_locked, s.sponsor_name
                 FROM DriverUser d
                 JOIN UserAccount u ON d.user_id = u.user_id
@@ -268,8 +321,8 @@ def get_drivers():
 @login_required
 def admin_sponsor_users():
     require_admin()
-    return render_template('admin_sponsor_users.html', sponsor_users=get_sponsor_users())
-
+    return render_template('admin_sponsor_users.html', sponsor_users=get_sponsor_users(),
+                           password_reset=request.args.get('password_reset') == '1')
 
 @admin_bp.route('/admin/sponsor-users/<int:sponsor_user_id>')
 @login_required
@@ -382,7 +435,8 @@ def admin_change_password():
 def admin_drivers():
     require_admin()
     return render_template('admin_drivers.html', drivers=get_drivers(),
-                           locked=request.args.get('locked') == '1')
+                           locked=request.args.get('locked') == '1',
+                           password_reset=request.args.get('password_reset') == '1')
 
 @admin_bp.route('/admin/drivers/<int:driver_id>/assume', methods=['POST'])
 @login_required
@@ -428,3 +482,71 @@ def stop_assuming():
     session['username'] = admin['username']
     session['user_type'] = admin['user_type']
     return redirect('/admin/drivers')
+
+@admin_bp.route('/admin/users/<int:user_id>/reset-password', methods=['GET', 'POST'])
+@login_required
+def admin_reset_password(user_id):
+    require_admin()
+    target = get_resettable_user(user_id)
+    if not target:
+        abort(404)
+
+    error = None
+    if request.method == 'POST':
+        check_csrf()
+        try:
+            if not reset_user_password(g.user['user_id'], user_id,
+                                       request.form.get('new_password', ''),
+                                       request.form.get('confirm_password', '')):
+                abort(404)
+            if target['user_type'].lower() == 'driver':
+                return redirect('/admin/drivers?password_reset=1')
+            return redirect('/admin/sponsor-users?password_reset=1')
+        except AdminError as exc:
+            error = str(exc)
+
+    return render_template('admin_reset_password.html', target=target, error=error), (400 if error else 200)
+
+def get_sales_by_sponsor():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT s.sponsor_id, s.sponsor_name,
+                       COUNT(r.redemption_id) AS total_redemptions,
+                       COALESCE(SUM(r.points_spent), 0) AS total_points,
+                       COALESCE(SUM(r.points_spent), 0) * s.point_value AS total_sales
+                FROM Sponsor s
+                LEFT JOIN RewardRedemption r ON r.sponsor_id = s.sponsor_id
+                GROUP BY s.sponsor_id, s.sponsor_name, s.point_value
+                ORDER BY s.sponsor_name
+            """)
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+def get_sales_by_driver():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT d.driver_id, d.first_name, d.last_name, s.sponsor_id, s.sponsor_name,
+                       COUNT(r.redemption_id) AS total_redemptions,
+                       SUM(r.points_spent) AS total_points,
+                       SUM(r.points_spent) * s.point_value AS total_sales
+                FROM RewardRedemption r
+                JOIN DriverUser d ON r.driver_id = d.driver_id
+                JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                GROUP BY d.driver_id, d.first_name, d.last_name, s.sponsor_id, s.sponsor_name, s.point_value
+                ORDER BY s.sponsor_name, total_points DESC, d.last_name, d.first_name
+            """)
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+@admin_bp.route('/admin/reports')
+@login_required
+def admin_reports():
+    require_admin()
+    return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor(),
+                           driver_sales=get_sales_by_driver())
