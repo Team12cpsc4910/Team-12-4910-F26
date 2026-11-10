@@ -70,6 +70,27 @@
                 {{ driver.points }} Points
             </p>
 
+            <!-- Keyword Search -->
+
+            <form method="GET" action="/driver/catalog" class="catalog-search" role="search">
+                <label for="catalog-search-input" class="visually-hidden">Search rewards</label>
+                <input type="search"
+                       id="catalog-search-input"
+                       name="search"
+                       value="{{ search }}"
+                       maxlength="{{ max_search_length }}"
+                       placeholder="Search rewards by keyword">
+                <button type="submit">Search</button>
+            </form>
+
+            {% if search %}
+            <p>
+                {{ catalog | length }} result{{ '' if catalog | length == 1 else 's' }}
+                for &ldquo;{{ search }}&rdquo;.
+                <a href="/driver/catalog">Clear search</a>
+            </p>
+            {% endif %}
+
             <!-- Product Catalog -->
 
             <div style="overflow-x: auto;">
@@ -206,8 +227,12 @@
 
                         <tr>
                             <td colspan="4" class="catalog-empty">
+                                {% if search %}
+                                No rewards match &ldquo;{{ search }}&rdquo;.
+                                {% else %}
                                 Your sponsor hasn't added
                                 any rewards yet.
+                                {% endif %}
                             </td>
                         </tr>
 

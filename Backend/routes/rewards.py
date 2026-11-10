@@ -183,10 +183,23 @@ def get_sponsor_catalog(user_id):
     finally:
         conn.close()
 
+# Longest keyword the driver catalog search accepts
+MAX_CATALOG_SEARCH_LENGTH = 100
+
+
+def like_pattern(keyword):
+    """Match keyword anywhere, treating % and _ as plain characters instead of SQL wildcards."""
+    escaped = keyword.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    return f'%{escaped}%'
+
+
 @rewards_bp.get('/driver/catalog')
 @login_required
 def driver_catalog():
     require_role('Driver')
+
+    # Keyword search over the driver's own sponsor's catalog (product name and description)
+    search = request.args.get('search', '').strip()[:MAX_CATALOG_SEARCH_LENGTH]
 
     conn = get_db_connection()
 
@@ -215,7 +228,7 @@ def driver_catalog():
                 and driver['sponsor_id'] is not None
             ):
 
-                cur.execute("""
+                query = """
                     SELECT product_id,
                            product_name,
                            description,
@@ -224,8 +237,14 @@ def driver_catalog():
                            availability AS available
                     FROM ProductCatalog
                     WHERE sponsor_id = %s
-                    ORDER BY product_name
-                """, (driver['sponsor_id'],))
+                """
+                params = [driver['sponsor_id']]
+
+                if search:
+                    query += " AND (product_name LIKE %s OR description LIKE %s)"
+                    params += [like_pattern(search)] * 2
+
+                cur.execute(query + " ORDER BY product_name", params)
 
                 catalog = cur.fetchall()
 
@@ -235,7 +254,9 @@ def driver_catalog():
     return render_template(
         'driver_catalog.html',
         driver=driver,
-        catalog=catalog
+        catalog=catalog,
+        search=search,
+        max_search_length=MAX_CATALOG_SEARCH_LENGTH
     )
 
 # GG.deals API configuration
