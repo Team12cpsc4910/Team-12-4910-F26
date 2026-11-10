@@ -525,9 +525,28 @@ def get_sales_by_sponsor():
     finally:
         conn.close()
 
+def get_sales_by_driver():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT d.driver_id, d.first_name, d.last_name, s.sponsor_id, s.sponsor_name,
+                       COUNT(r.redemption_id) AS total_redemptions,
+                       SUM(r.points_spent) AS total_points,
+                       SUM(r.points_spent) * s.point_value AS total_sales
+                FROM RewardRedemption r
+                JOIN DriverUser d ON r.driver_id = d.driver_id
+                JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                GROUP BY d.driver_id, d.first_name, d.last_name, s.sponsor_id, s.sponsor_name, s.point_value
+                ORDER BY s.sponsor_name, total_points DESC, d.last_name, d.first_name
+            """)
+            return cur.fetchall()
+    finally:
+        conn.close()
 
 @admin_bp.route('/admin/reports')
 @login_required
 def admin_reports():
     require_admin()
-    return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor())
+    return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor(),
+                           driver_sales=get_sales_by_driver())

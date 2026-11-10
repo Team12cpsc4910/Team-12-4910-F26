@@ -47,6 +47,35 @@
           {% endif %}
         </tbody>
       </table>
+      <h2>Sales by Driver</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Sponsor</th>
+            <th>Redemptions</th>
+            <th>Points Spent</th>
+            <th>Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if driver_sales %}
+            {% for sale in driver_sales %}
+            <tr>
+              <td>{{ sale.first_name }} {{ sale.last_name }}</td>
+              <td>{{ sale.sponsor_name }}</td>
+              <td>{{ sale.total_redemptions }}</td>
+              <td>{{ sale.total_points }}</td>
+              <td>${{ '%.2f' | format(sale.total_sales) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no driver sales yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </main>
   </div>
 </body>
