@@ -108,7 +108,7 @@
                           {% if item.available and points >= item.point_cost %}
       
                           <form method="GET" action="/driver/catalog/{{ item.product_id }}/checkout">
-                              <button type="submit">Review order</button>
+                              <button type="submit">Redeem</button>
                           </form>
       
                           {% elif not item.available %}
