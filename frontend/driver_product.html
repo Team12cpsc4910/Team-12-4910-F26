@@ -77,13 +77,8 @@
         <!-- Redemption: same rules as the catalog list -->
 
         {% if item.available and item.point_cost > 0 and driver.points >= item.point_cost %}
-            <form method="POST"
-                  action="/rewards/{{ item.product_id }}/redeem"
-                  class="login-form"
-                  onsubmit="return confirm('Redeem this reward for {{ item.point_cost }} points?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
-                <button type="submit">Redeem for {{ item.point_cost }} Points</button>
+            <form method="GET" action="/driver/catalog/{{ item.product_id }}/checkout">
+                <button type="submit">Review order</button>
             </form>
         {% elif not item.available or item.point_cost <= 0 %}
             <p class="catalog-empty">This reward is currently unavailable.</p>
