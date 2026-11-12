@@ -10,6 +10,7 @@ from routes.applications import applications_bp
 from routes.drivers import drivers_bp
 from routes.company import company_bp
 from routes.rewards import rewards_bp, redemption_key
+from routes.admin import admin_bp
 
 app = Flask(__name__, template_folder='../frontend', static_folder='../frontend')
 
@@ -35,6 +36,7 @@ app.register_blueprint(applications_bp)
 app.register_blueprint(drivers_bp)
 app.register_blueprint(company_bp)
 app.register_blueprint(rewards_bp)
+app.register_blueprint(admin_bp)
 
 @app.route('/')
 def home():

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>My Sponsor's Catalog</title>
+
+    <link rel="stylesheet" href="/style.css?v=5">
+</head>
+
+<body>
+
+<div class="container">
+
+    <nav>
+        <a href="/dashboard">Driver Dashboard</a>
+        <a href="/applications">Applications</a>
+        <a href="/logout">Log Out</a>
+    </nav>
+
+    <main>
+
+        <h1>My Sponsor's Catalog</h1>
+
+        <!-- Notifications -->
+
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+
+        <!-- Check Driver Status -->
+
+        {% if not driver %}
+
+            <p>You do not have a driver profile yet.</p>
+
+        {% elif driver.application_status == 'Dropped' %}
+
+            <p>
+                You have been dropped from your sponsor's
+                program. The catalog is unavailable.
+            </p>
+
+        {% elif driver.application_status == 'Rejected' %}
+
+            <p>
+                Your application was rejected.
+                Visit <a href="/applications">Applications</a>
+                to apply again.
+            </p>
+
+        {% elif driver.application_status != 'Approved'
+                or driver.sponsor_id is none %}
+
+            <p>
+                Your sponsor must approve your application
+                before you can access the catalog.
+            </p>
+
+        {% else %}
+
+            <!-- Sponsor Information -->
+
+            <h2>{{ driver.sponsor_name }} Rewards</h2>
+
+            <p>
+                <strong>Your Points Balance:</strong>
+                {{ driver.points }} Points
+            </p>
+
+            <!-- Keyword Search -->
+
+            <form method="GET" action="/driver/catalog" class="catalog-search" role="search">
+                <label for="catalog-search-input" class="visually-hidden">Search rewards</label>
+                <input type="search"
+                       id="catalog-search-input"
+                       name="search"
+                       value="{{ search }}"
+                       maxlength="{{ max_search_length }}"
+                       placeholder="Search rewards by keyword">
+                <button type="submit">Search</button>
+            </form>
+
+            {% if search %}
+            <p>
+                {{ catalog | length }} result{{ '' if catalog | length == 1 else 's' }}
+                for &ldquo;{{ search }}&rdquo;.
+                <a href="/driver/catalog">Clear search</a>
+            </p>
+            {% endif %}
+
+            <!-- Product Catalog -->
+
+            <div style="overflow-x: auto;">
+
+                <table class="catalog-table">
+
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Points Required</th>
+                            <th>Availability</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for item in catalog %}
+
+                        <tr>
+
+                            <!-- Product Information -->
+
+                            <td>
+
+                                {% if item.image_url %}
+
+                                <img
+                                    src="{{ item.image_url }}"
+                                    alt="{{ item.product_name }}"
+                                    width="90"
+                                    loading="lazy"
+                                    style="max-width:90px;
+                                           height:auto;
+                                           border-radius:6px;"
+                                >
+
+                                <br>
+
+                                {% endif %}
+
+                                <strong>
+                                    <a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a>
+                                </strong>
+
+                                {% if item.description %}
+
+                                    <br>
+                                    <small>
+                                        {{ item.description }}
+                                    </small>
+
+                                {% endif %}
+
+                                <br>
+                                <small><a href="/driver/catalog/{{ item.product_id }}">View Details</a></small>
+
+                            </td>
+
+                            <!-- Points Required -->
+
+                            <td>
+                                {{ item.point_cost }} Points
+                            </td>
+
+                            <!-- Availability -->
+
+                            <td>
+
+                                {% if item.available %}
+
+                                    <span class="status in-stock">
+                                        In Stock
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="status out-of-stock">
+                                        Unavailable
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- Redemption -->
+
+                            <td>
+
+                                {% if item.available
+                                      and item.point_cost > 0
+                                      and driver.points >= item.point_cost %}
+
+                                <form
+                                    method="POST"
+                                    action="/rewards/{{ item.product_id }}/redeem"
+                                    onsubmit="return confirm('Redeem this reward for {{ item.point_cost }} points?');"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token() }}"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="redemption_key"
+                                        value="{{ redemption_key() }}"
+                                    >
+
+                                    <button type="submit">
+                                        Redeem
+                                    </button>
+
+                                </form>
+
+                                {% elif not item.available %}
+
+                                    Unavailable
+
+                                {% elif item.point_cost <= 0 %}
+
+                                    Unavailable
+
+                                {% else %}
+
+                                    Not Enough Points
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% else %}
+
+                        <tr>
+                            <td colspan="4" class="catalog-empty">
+                                {% if search %}
+                                No rewards match &ldquo;{{ search }}&rdquo;.
+                                {% else %}
+                                Your sponsor hasn't added
+                                any rewards yet.
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <!-- API Attribution -->
+
+            <p>
+                <small>
+                    Game information and pricing may be
+                    provided by
+
+                    <a href="https://gg.deals/"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        GG.deals
+                    </a>.
+
+                    Points prices are set by sponsors.
+                    Sponsors are responsible for fulfilling rewards.
+                </small>
+            </p>
+
+        {% endif %}
+
+    </main>
+
+</div>
+
+</body>
+
+</html>

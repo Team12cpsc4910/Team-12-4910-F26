@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>My Drivers</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/sponsor/company">Company</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">My Drivers</h1>
+      <p style="text-align: center;">Drivers in your incentive program. Select a driver to view their profile.</p>
+
+      {% if added %}
+        <p class="success-message">Driver added. They can now log in with the username and password you set.</p>
+      {% endif %}
+
+      <form action="/sponsor/drivers/new" method="get">
+        <button type="submit">Add Driver</button>
+      </form>
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if drivers %}
+            {% for driver in drivers %}
+            <tr>
+              <td>{{ driver.first_name }} {{ driver.last_name }}</td>
+              <td>{{ driver.points }}</td>
+              <td><span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span></td>
+              <td><a href="/sponsor/drivers/{{ driver.driver_id }}">View</a></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No drivers are in your program yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

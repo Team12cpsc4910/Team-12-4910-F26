@@ -1,8 +1,9 @@
-from flask import Blueprint, request, render_template, session, redirect
+from flask import Blueprint, request, render_template, session, redirect, g
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
 from routes.rewards import get_sponsor_catalog
+from routes.admin import change_own_password, AdminError
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -32,7 +33,7 @@ def login():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT user_id, username, password_hash, user_type
+                SELECT user_id, username, password_hash, user_type, account_locked
                 FROM UserAccount
                 WHERE username = %s
             """, (username,))
@@ -43,6 +44,10 @@ def login():
         conn.close()
 
     if user and check_password_hash(user['password_hash'], password):
+        # Checked after the password so a wrong guess can't reveal which accounts are deactivated
+        if user['account_locked']:
+            return "This account has been deactivated or locked. Please contact your sponsor or an administrator."
+
         session['user_id'] = user['user_id']
         session['username'] = user['username']
         session['user_type'] = user['user_type']
@@ -115,16 +120,19 @@ def dashboard():
     elif user_type == "Sponsor":
         return render_template(
             'sponsor_dashboard.html',
-            report=get_sponsor_point_report(current_user)
+            report=get_sponsor_point_report(current_user),
+            catalog=get_sponsor_catalog(session.get('user_id'))
         )
-
+        
     elif user_type == "Driver":
         points = 0
         history = []
         catalog = []
-       redemptions = []
+        redemptions = []
         approved = False
         dropped = False
+        dropped_by = None
+        rejected = False
         conn = None
 
         try:
@@ -135,8 +143,11 @@ def dashboard():
                     SELECT d.driver_id,
                            d.points,
                            d.sponsor_id,
-                           d.application_status
+                           d.application_status,
+                           s.sponsor_name
                     FROM DriverUser d
+                    LEFT JOIN Sponsor s
+                        ON d.sponsor_id = s.sponsor_id
                     WHERE d.user_id = %s
                 """, (session.get('user_id', 0),))
 
@@ -176,6 +187,9 @@ def dashboard():
 
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
+                    # A dropped driver keeps the sponsor_id of the sponsor that dropped them
+                    dropped_by = driver['sponsor_name'] if dropped else None
+                    rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
                         cur.execute("""
@@ -205,7 +219,9 @@ def dashboard():
             catalog=catalog,
             redemptions=redemptions,
             approved=approved,
-            dropped=dropped
+            dropped=dropped,
+            dropped_by=dropped_by,
+            rejected=rejected
         )
 
     else:
@@ -322,7 +338,31 @@ def profile():
     finally:
         conn.close()
 
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=user,
+                           password_changed=request.args.get('password_changed') == '1')
+
+# Change Password: any real (database) account changes its own password by confirming the current
+# one. Reuses the admin page's change_own_password, so complexity rules and logging stay in one place.
+@auth_bp.route('/password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    # An admin assuming a driver is acting as that driver, so they can't change the driver's password
+    if session.get('impersonator'):
+        return redirect('/profile')
+
+    error = None
+    if request.method == 'POST':
+        check_csrf()
+        try:
+            change_own_password(g.user['user_id'],
+                                request.form.get('current_password', ''),
+                                request.form.get('new_password', ''),
+                                request.form.get('confirm_password', ''))
+            return redirect('/profile?password_changed=1')
+        except AdminError as exc:
+            error = str(exc)
+
+    return render_template('password_form.html', error=error), (400 if error else 200)
 
 
 @auth_bp.route('/logout')

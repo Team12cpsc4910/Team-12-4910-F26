@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Driver</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/sponsor/drivers">Drivers</a>
+      <a href="/sponsor/applications">Applications</a>
+      <a href="/sponsor/company">Company</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1>Add Driver</h1>
+
+      {% if company %}
+        <p style="text-align: center;">Create a driver account in <strong>{{ company.sponsor_name }}</strong>'s program. No application is needed &mdash; the driver is approved right away.</p>
+
+        {% if error %}
+          <p class="error-message">{{ error }}</p>
+        {% endif %}
+
+        <form action="/sponsor/drivers/new" method="POST" class="login-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" value="{{ values.get('first_name', '') }}" required>
+          </div>
+
+          <div class="form-group">
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" value="{{ values.get('last_name', '') }}" required>
+          </div>
+
+          <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" value="{{ values.get('username', '') }}" required>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" value="{{ values.get('email', '') }}" required>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Temporary Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <ul id="password-reqs" class="password-reqs">
+              <li id="req-length" class="invalid">Minimum of 8 characters</li>
+              <li id="req-upper" class="invalid">Contain 1 uppercase letter</li>
+              <li id="req-number" class="invalid">Contain 1 number</li>
+            </ul>
+          </div>
+
+          <script>
+            const passwordInput = document.getElementById('password');
+            const checks = {
+              'req-length': val => val.length >= 8,
+              'req-upper': val => /[A-Z]/.test(val),
+              'req-number': val => /[0-9]/.test(val),
+            };
+
+            passwordInput.addEventListener('input', function() {
+              for (const [id, passes] of Object.entries(checks)) {
+                const item = document.getElementById(id);
+                item.classList.toggle('valid', passes(passwordInput.value));
+                item.classList.toggle('invalid', !passes(passwordInput.value));
+              }
+            });
+          </script>
+
+          <div class="form-group">
+            <label for="confirm_password">Confirm Password:</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+          </div>
+
+          <button type="submit">Add Driver</button>
+        </form>
+      {% else %}
+        <p class="catalog-empty">Your account isn't linked to a sponsor company, so you can't add drivers.</p>
+      {% endif %}
+
+      <p style="text-align: center;"><a href="/sponsor/drivers">Back to Drivers</a></p>
+    </main>
+  </div>
+</body>
+</html>
