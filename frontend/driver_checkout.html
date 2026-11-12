@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Review order | Driver checkout</title>
+    <link rel="stylesheet" href="/style.css?v=6">
+</head>
+<body>
+<div class="container checkout">
+    <nav aria-label="Driver navigation">
+        <a href="/dashboard">Driver Dashboard</a>
+        <a href="/driver/catalog">Catalog</a>
+    </nav>
+    <main>
+        <h1>Review your order</h1>
+        {% for message in get_flashed_messages() %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+        <section aria-label="Reward details" class="checkout-item">
+            {% if item.image_url %}<img src="{{ item.image_url }}" alt="">{% endif %}
+            <div>
+                <h2>{{ item.product_name }}</h2>
+                <p>{{ driver.sponsor_name }} &middot; Quantity 1</p>
+            </div>
+        </section>
+        <dl class="checkout-total">
+            <div><dt>Current balance</dt><dd>{{ driver.points }} points</dd></div>
+            {% if item.point_cost > 0 %}
+                <div><dt>Order total</dt><dd>{{ item.point_cost }} points</dd></div>
+            {% endif %}
+            {% if item.available and item.point_cost > 0 and driver.points >= item.point_cost %}
+                <div><dt>Balance after order</dt><dd>{{ driver.points - item.point_cost }} points</dd></div>
+            {% endif %}
+        </dl>
+        {% if not item.available or item.point_cost <= 0 %}
+            <p role="status">This reward is currently unavailable.</p>
+        {% elif driver.points < item.point_cost %}
+            <p role="status">You need {{ item.point_cost - driver.points }} more points to place this order.</p>
+        {% else %}
+            <form method="POST" action="/rewards/{{ item.product_id }}/redeem">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
+                <input type="hidden" name="reviewed_cost" value="{{ item.point_cost }}">
+                <button type="submit">Place order for {{ item.point_cost }} points</button>
+            </form>
+        {% endif %}
+        <p><a href="/driver/catalog">Back to catalog</a></p>
+    </main>
+</div>
+</body>
+</html>
