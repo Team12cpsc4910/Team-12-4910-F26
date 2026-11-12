@@ -107,19 +107,8 @@
                       <td>
                           {% if item.available and points >= item.point_cost %}
       
-                          <form method="POST"
-                                action="/rewards/{{ item.product_id }}/redeem"
-                                onsubmit="return confirm('Spend {{ item.point_cost }} points on this reward?');">
-      
-                              <input type="hidden"
-                                     name="csrf_token"
-                                     value="{{ csrf_token() }}">
-      
-                              <input type="hidden"
-                                     name="redemption_key"
-                                     value="{{ redemption_key() }}">
-      
-                              <button type="submit">Redeem</button>
+                          <form method="GET" action="/driver/catalog/{{ item.product_id }}/checkout">
+                              <button type="submit">Review order</button>
                           </form>
       
                           {% elif not item.available %}
