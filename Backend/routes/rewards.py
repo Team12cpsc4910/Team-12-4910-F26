@@ -33,7 +33,7 @@ def require_role(role):
         abort(403)
 
 
-def redeem_reward(user_id, product_id, request_key):
+def redeem_reward(user_id, product_id, request_key, reviewed_cost=None):
     """Charge the current driver for ONE sponsor reward; returns the redemption ID.
 
     The driver row is locked before checking its balance; two concurrent requests
@@ -88,6 +88,8 @@ def redeem_reward(user_id, product_id, request_key):
             cost = product['point_cost']
             if not isinstance(cost, int) or cost <= 0:
                 raise RedemptionError('This reward has an invalid points price.')
+            if reviewed_cost is not None and cost != reviewed_cost:
+                raise RedemptionError('The points price changed. Please review the new total.')
             if driver['points'] < cost:
                 raise RedemptionError(f'You need {cost} points, but only have {driver["points"]}.')
 
@@ -148,11 +150,16 @@ def redeem_reward(user_id, product_id, request_key):
 def redeem_product(product_id):
     require_role('Driver')
     check_csrf()
+    reviewed_cost = request.form.get('reviewed_cost', type=int)
+    if reviewed_cost is None:
+        flash('Review your order before confirming.', 'error')
+        return redirect(f'/driver/catalog/{product_id}/checkout')
     try:
         redemption_id = redeem_reward(g.user['user_id'], product_id,
-                                      request.form.get('redemption_key', ''))
+                                      request.form.get('redemption_key', ''), reviewed_cost)
     except RedemptionError as exc:
         flash(str(exc), 'error')
+        return redirect('/driver/catalog')
     else:
         flash(f'Reward order #{redemption_id} confirmed. Check My Reward Orders for its status.', 'success')
     return redirect('/dashboard')
@@ -271,6 +278,16 @@ def driver_catalog():
 @rewards_bp.get('/driver/catalog/<int:product_id>')
 @login_required
 def driver_product(product_id):
+    return render_driver_reward(product_id, 'driver_product.html')
+
+
+@rewards_bp.get('/driver/catalog/<int:product_id>/checkout')
+@login_required
+def driver_checkout(product_id):
+    return render_driver_reward(product_id, 'driver_checkout.html')
+
+
+def render_driver_reward(product_id, template):
     require_role('Driver')
 
     conn = get_db_connection()
@@ -297,7 +314,7 @@ def driver_product(product_id):
 
     if not product:
         abort(404)
-    return render_template('driver_product.html', driver=driver, item=product)
+    return render_template(template, driver=driver, item=product)
 
 # GG.deals API configuration
 
