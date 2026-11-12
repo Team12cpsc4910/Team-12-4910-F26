@@ -252,3 +252,58 @@ def test_db_write_failure_rolls_back_order_points_and_history(
     assert db.data['driver']['points'] == 500
     assert db.data['orders'] == []
     assert db.data['logs'] == []
+
+
+def test_checkout_review_and_confirmation(monkeypatch):
+    from flask import Flask, g
+    from security import csrf_token
+
+    db = FakeConnection()
+    monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
+    original_execute = FakeCursor.execute
+
+    def execute(self, sql, params):
+        if 'LEFT JOIN Sponsor' in sql:
+            self.result = dict(db.data['driver'], sponsor_name='Team 12')
+        elif 'availability AS available' in sql:
+            self.result = dict(db.data['product'], available=True)
+        else:
+            original_execute(self, sql, params)
+
+    monkeypatch.setattr(FakeCursor, 'execute', execute)
+    app = Flask(__name__, template_folder=os.path.join(BACKEND_DIR, '../frontend'))
+    app.secret_key = 'test'
+    app.register_blueprint(rewards.rewards_bp)
+    app.jinja_env.globals.update(csrf_token=csrf_token, redemption_key=rewards.redemption_key)
+
+    @app.before_request
+    def load_driver():
+        g.user = {'user_id': 42, 'user_type': 'Driver'}
+
+    from html.parser import HTMLParser
+
+    class FormFields(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == 'input':
+                field = dict(attrs)
+                fields[field['name']] = field['value']
+
+    client = app.test_client()
+    review = client.get('/driver/catalog/12/checkout')
+    assert review.status_code == 200
+    assert b'Gas card' in review.data and b'300 points' in review.data
+    assert db.data['driver']['points'] == 500 and not db.data['orders']
+    fields = {}
+    FormFields().feed(review.get_data(as_text=True))
+    for _ in range(2):
+        assert client.post('/rewards/12/redeem', data=fields).location == '/dashboard'
+    assert db.data['driver']['points'] == 300
+    assert len(db.data['orders']) == len(db.data['logs']) == 1
+
+
+def test_price_changed_after_review(monkeypatch):
+    db = FakeConnection(price=250)
+    monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
+    with pytest.raises(rewards.RedemptionError, match='price changed'):
+        rewards.redeem_reward(42, 12, 'a' * 32, reviewed_cost=200)
+    assert db.data == db.before
