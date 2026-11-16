@@ -574,3 +574,29 @@ def admin_reports():
                            driver_sales=None if detailed else get_sales_by_driver(sponsor_id),
                            sales_details=get_sales_details(sponsor_id) if detailed else None,
                            selected_sponsor_id=sponsor_id)
+
+def get_point_report(driver_id=None):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT d.first_name, d.last_name, p.datetime, p.points_change, p.reason,
+                       COALESCE(CONCAT(su.first_name, ' ', su.last_name), 'System') AS changed_by
+                FROM PointChangeLog p
+                JOIN DriverUser d ON p.driver_id = d.driver_id
+                LEFT JOIN SponsorUser su ON p.sponsor_user_id = su.sponsor_user_id
+                WHERE %s IS NULL OR p.driver_id = %s
+                ORDER BY p.datetime DESC, p.point_log_id DESC
+            """, (driver_id, driver_id))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+@admin_bp.route('/admin/reports/points')
+@login_required
+def admin_point_report():
+    require_admin()
+    driver_id = request.args.get('driver_id', type=int)
+    return render_template('admin_point_report.html', drivers=get_drivers(),
+                           report=get_point_report(driver_id), selected_driver_id=driver_id)

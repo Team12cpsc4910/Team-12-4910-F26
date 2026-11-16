@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Driver Point Report</title>
+  <link rel="stylesheet" href="/style.css?v=5" />
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/admin/drivers">Drivers</a>
+      <a href="/admin/sponsor-users">Sponsor Users</a>
+      <a href="/admin/admin-users">Admin Users</a>
+      <a href="/admin/accounts/new">Create User</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/profile">My Profile</a>
+      <a href="/logout">Log Out</a>
+    </nav>
+    <main>
+      <h1 style="text-align: center;">Driver Point Report</h1>
+      <p style="text-align: center;"><a href="/admin/reports">Back to Sales Reports</a></p>
+
+      <form action="/admin/reports/points" method="get" class="login-form">
+        <div class="form-group">
+          <label for="driver_id">Driver:</label>
+          <select id="driver_id" name="driver_id">
+            <option value="">All Drivers</option>
+            {% for driver in drivers %}
+              <option value="{{ driver.driver_id }}" {% if driver.driver_id == selected_driver_id %}selected{% endif %}>{{ driver.first_name }} {{ driver.last_name }} ({{ driver.username }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit">Show Points</button>
+      </form>
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Date</th>
+            <th>Change</th>
+            <th>Changed By</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if report %}
+            {% for row in report %}
+            <tr>
+              <td>{{ row.first_name }} {{ row.last_name }}</td>
+              <td>{{ row.datetime }}</td>
+              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td>{{ row.changed_by }}</td>
+              <td>{{ row.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no point changes{% if selected_driver_id %} for this driver{% endif %} yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>
