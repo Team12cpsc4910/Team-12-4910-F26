@@ -20,6 +20,17 @@
     <main>
       <h1 style="text-align: center;">Reports</h1>
 
+      <p style="text-align: center;">
+        {% if detailed %}
+          <a href="/admin/reports{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}">Summary</a>
+          | <strong>Detailed</strong>
+        {% else %}
+          <strong>Summary</strong>
+          | <a href="/admin/reports?view=detailed{% if selected_sponsor_id %}&sponsor_id={{ selected_sponsor_id }}{% endif %}">Detailed</a>
+        {% endif %}
+      </p>
+
+      {% if not detailed %}
       <h2>Sales by Sponsor</h2>
       <table class="catalog-table">
         <thead>
@@ -47,8 +58,16 @@
           {% endif %}
         </tbody>
       </table>
+
       <h2>Sales by Driver</h2>
+      {% else %}
+      <h2>Sales Details</h2>
+      {% endif %}
+
       <form action="/admin/reports" method="get" class="login-form">
+        {% if detailed %}
+          <input type="hidden" name="view" value="detailed">
+        {% endif %}
         <div class="form-group">
           <label for="sponsor_id">Sponsor:</label>
           <select id="sponsor_id" name="sponsor_id">
@@ -60,6 +79,41 @@
         </div>
         <button type="submit">Show Sales</button>
       </form>
+
+      {% if detailed %}
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Driver</th>
+            <th>Sponsor</th>
+            <th>Product</th>
+            <th>Points Spent</th>
+            <th>Sale</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if sales_details %}
+            {% for sale in sales_details %}
+            <tr>
+              <td>{{ sale.redeemed_at }}</td>
+              <td>{{ sale.first_name }} {{ sale.last_name }}</td>
+              <td>{{ sale.sponsor_name }}</td>
+              <td>{{ sale.product_name }}</td>
+              <td>{{ sale.points_spent }}</td>
+              <td>${{ '%.2f' | format(sale.sale_amount) }}</td>
+              <td>{{ sale.status }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="catalog-empty">There are no sales{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      {% else %}
       <table class="catalog-table">
         <thead>
           <tr>
@@ -88,6 +142,7 @@
           {% endif %}
         </tbody>
       </table>
+      {% endif %}
     </main>
   </div>
 </body>

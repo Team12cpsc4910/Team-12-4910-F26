@@ -545,11 +545,32 @@ def get_sales_by_driver(sponsor_id=None):
     finally:
         conn.close()
 
+def get_sales_details(sponsor_id=None):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT r.redemption_id, r.redeemed_at, r.product_name, r.points_spent, r.status,
+                       r.points_spent * s.point_value AS sale_amount,
+                       s.sponsor_name, d.first_name, d.last_name
+                FROM RewardRedemption r
+                JOIN DriverUser d ON r.driver_id = d.driver_id
+                JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                WHERE %s IS NULL OR r.sponsor_id = %s
+                ORDER BY r.redeemed_at DESC, r.redemption_id DESC
+            """, (sponsor_id, sponsor_id))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
 @admin_bp.route('/admin/reports')
 @login_required
 def admin_reports():
     require_admin()
     sponsor_id = request.args.get('sponsor_id', type=int)
-    return render_template('admin_reports.html', sponsor_sales=get_sales_by_sponsor(),
-                           driver_sales=get_sales_by_driver(sponsor_id),
+    detailed = request.args.get('view') == 'detailed'
+    return render_template('admin_reports.html', detailed=detailed,
+                           sponsor_sales=get_sales_by_sponsor(),
+                           driver_sales=None if detailed else get_sales_by_driver(sponsor_id),
+                           sales_details=get_sales_details(sponsor_id) if detailed else None,
                            selected_sponsor_id=sponsor_id)
