@@ -1,7 +1,9 @@
+import csv
+import io
 import re
 
 import pymysql
-from flask import Blueprint, render_template, request, redirect, session, g, abort
+from flask import Blueprint, render_template, request, redirect, session, g, abort, Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db_connection
@@ -600,3 +602,44 @@ def admin_point_report():
     driver_id = request.args.get('driver_id', type=int)
     return render_template('admin_point_report.html', drivers=get_drivers(),
                            report=get_point_report(driver_id), selected_driver_id=driver_id)
+
+
+def csv_safe(value):
+    if isinstance(value, str) and value[:1] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + value
+    return value
+
+@admin_bp.route('/admin/reports/download/<report>')
+@login_required
+def admin_report_csv(report):
+    require_admin()
+    sponsor_id = request.args.get('sponsor_id', type=int)
+    driver_id = request.args.get('driver_id', type=int)
+
+    if report == 'sales-by-sponsor':
+        header = ['Sponsor', 'Redemptions', 'Points Spent', 'Sales']
+        rows = [[r['sponsor_name'], r['total_redemptions'], r['total_points'], f"{r['total_sales']:.2f}"]
+                for r in get_sales_by_sponsor()]
+    elif report == 'sales-by-driver':
+        header = ['Driver', 'Sponsor', 'Redemptions', 'Points Spent', 'Sales']
+        rows = [[f"{r['first_name']} {r['last_name']}", r['sponsor_name'], r['total_redemptions'],
+                 r['total_points'], f"{r['total_sales']:.2f}"]
+                for r in get_sales_by_driver(sponsor_id)]
+    elif report == 'sales-details':
+        header = ['Date', 'Driver', 'Sponsor', 'Product', 'Points Spent', 'Sale', 'Status']
+        rows = [[r['redeemed_at'], f"{r['first_name']} {r['last_name']}", r['sponsor_name'], r['product_name'],
+                 r['points_spent'], f"{r['sale_amount']:.2f}", r['status']]
+                for r in get_sales_details(sponsor_id)]
+    elif report == 'points':
+        header = ['Driver', 'Date', 'Change', 'Changed By', 'Reason']
+        rows = [[f"{r['first_name']} {r['last_name']}", r['datetime'], r['points_change'], r['changed_by'], r['reason']]
+                for r in get_point_report(driver_id)]
+    else:
+        abort(404)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(header)
+    writer.writerows([[csv_safe(value) for value in row] for row in rows])
+    return Response(output.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={report}.csv'})

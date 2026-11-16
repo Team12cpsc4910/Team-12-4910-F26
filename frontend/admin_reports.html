@@ -58,6 +58,7 @@
           {% endif %}
         </tbody>
       </table>
+      <p style="text-align: center;"><a href="/admin/reports/download/sales-by-sponsor">Download CSV</a></p>
 
       <h2>Sales by Driver</h2>
       {% else %}
@@ -113,6 +114,7 @@
           {% endif %}
         </tbody>
       </table>
+      <p style="text-align: center;"><a href="/admin/reports/download/sales-details{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}">Download CSV</a></p>
       {% else %}
       <table class="catalog-table">
         <thead>
@@ -142,6 +144,7 @@
           {% endif %}
         </tbody>
       </table>
+      <p style="text-align: center;"><a href="/admin/reports/download/sales-by-driver{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}">Download CSV</a></p>
       {% endif %}
     </main>
   </div>
