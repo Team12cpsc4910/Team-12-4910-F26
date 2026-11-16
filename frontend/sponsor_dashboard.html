@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sponsor Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="stylesheet" href="/style.css?v=6" />
 </head>
 <body>
   <div class="container">
@@ -115,13 +115,15 @@
           <button type="submit">Add Reward</button>
       </form>
       <!-- Driver Point Report: driver name identifies which driver each point change row belongs to -->
+      <!-- Driver Point Report: driver name identifies which driver each point change row belongs to -->
       <h2>Driver Point Report</h2>
-      <table class="catalog-table">
+      <p>Every point change for your drivers, newest first. Changes not made by a sponsor user, such as reward redemptions, show as Unknown.</p>
+      <table class="catalog-table report-table">
         <thead>
           <tr>
-            <th>Driver</th>
             <th>Date</th>
-            <th>Change</th>
+            <th>Driver</th>
+            <th class="num">Change</th>
             <th>Changed By</th>
             <th>Reason</th>
           </tr>
@@ -130,9 +132,9 @@
           {% if report %}
             {% for row in report %}
             <tr>
+              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
               <td>{{ row.first_name }} {{ row.last_name }}</td>
-              <td>{{ row.datetime }}</td>
-              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td class="num {% if row.points_change > 0 %}points-up{% else %}points-down{% endif %}">{% if row.points_change > 0 %}+{% endif %}{{ '{:,}'.format(row.points_change) }}</td>
               <td>{{ row.changed_by }}</td>
               <td>{{ row.reason }}</td>
             </tr>
@@ -144,7 +146,10 @@
           {% endif %}
         </tbody>
       </table>
-      <p style="text-align: center;"><a href="/sponsor/point-report/download">Download CSV</a></p>
+      <div class="report-footer">
+        <span>{{ report | length }} point change{% if report | length != 1 %}s{% endif %}</span>
+        <a href="/sponsor/point-report/download">Download CSV</a>
+      </div>
     </main>
   </div>
 </body>

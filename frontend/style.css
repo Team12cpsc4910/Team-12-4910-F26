@@ -421,3 +421,125 @@ a:hover {
 .checkout-total dd { text-align: right; }
 .checkout a { color: #bae6fd; }
 .checkout nav { flex-wrap: wrap; }
+
+.container.wide {
+  max-width: 1100px;
+}
+
+.container.wide nav {
+  flex-wrap: wrap;
+}
+
+.report-tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 25px;
+}
+
+.report-tabs a {
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  color: #cbd5e1;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.report-tabs a:hover {
+  border-color: #00e676;
+}
+
+.report-tabs a.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.report-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.report-filter label {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #cbd5e1;
+}
+
+.report-filter select {
+  min-width: 220px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.95em;
+  color: #ffffff;
+}
+
+.report-filter select option {
+  background-color: #1e293b;
+  color: #ffffff;
+}
+
+.report-filter button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
+  font-size: 0.9em;
+}
+
+.report-table th,
+.report-table td {
+  text-align: left;
+}
+
+.report-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.report-table .date {
+  white-space: nowrap;
+}
+
+.report-table tfoot td {
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: none;
+}
+
+.report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: #94a3b8;
+}
+
+.points-up {
+  color: #4ade80;
+}
+
+.points-down {
+  color: #f87171;
+}
+
+.status.requested {
+  background-color: rgba(217, 119, 6, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.status.fulfilled {
+  background-color: rgba(22, 163, 74, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}

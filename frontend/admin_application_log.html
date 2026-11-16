@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Application Log</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="stylesheet" href="/style.css?v=6" />
 </head>
 <body>
-  <div class="container">
+  <div class="container wide">
     <nav>
       <a href="/dashboard">Dashboard</a>
       <a href="/admin/drivers">Drivers</a>
@@ -19,29 +19,36 @@
       <a href="/logout">Log Out</a>
     </nav>
     <main>
-      <h1 style="text-align: center;">Application Log</h1>
-      <p style="text-align: center;">Every driver application event for all sponsors, newest first.</p>
+      <h1>Reports</h1>
 
-      <form action="/admin/application-log" method="get" class="login-form">
-        <div class="form-group">
-          <label for="sponsor_id">Sponsor:</label>
-          <select id="sponsor_id" name="sponsor_id">
-            <option value="">All Sponsors</option>
-            {% for sponsor in sponsors %}
-              <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <div class="report-tabs">
+        <a href="/admin/reports">Sales Summary</a>
+        <a href="/admin/reports?view=detailed">Sales Details</a>
+        <a href="/admin/reports/points">Driver Points</a>
+        <a href="/admin/application-log" class="active">Application Log</a>
+      </div>
+
+      <h2>Application Log</h2>
+      <p>Every driver application event for all sponsors, newest first.</p>
+
+      <form action="/admin/application-log" method="get" class="report-filter">
+        <label for="sponsor_id">Sponsor:</label>
+        <select id="sponsor_id" name="sponsor_id">
+          <option value="">All Sponsors</option>
+          {% for sponsor in sponsors %}
+            <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
+          {% endfor %}
+        </select>
         <button type="submit">Show Log</button>
       </form>
 
-      <table class="catalog-table">
+      <table class="catalog-table report-table">
         <thead>
           <tr>
             <th>Date</th>
             <th>Driver</th>
             <th>Sponsor</th>
-            <th>Application #</th>
+            <th class="num">Application #</th>
             <th>Entry</th>
             <th>Current Status</th>
           </tr>
@@ -50,12 +57,12 @@
           {% if log %}
             {% for row in log %}
             <tr>
-              <td>{{ row.datetime }}</td>
+              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
               <td>{{ row.first_name }} {{ row.last_name }}</td>
               <td>{{ row.sponsor_name }}</td>
-              <td>{{ row.app_id }}</td>
+              <td class="num">{{ row.app_id }}</td>
               <td>{{ row.reason }}</td>
-              <td>{{ row.state | capitalize }}</td>
+              <td><span class="status {{ row.state | lower }}">{{ row.state | capitalize }}</span></td>
             </tr>
             {% endfor %}
           {% else %}
@@ -65,6 +72,9 @@
           {% endif %}
         </tbody>
       </table>
+      <div class="report-footer">
+        <span>{{ log | length }} entr{% if log | length != 1 %}ies{% else %}y{% endif %}</span>
+      </div>
     </main>
   </div>
 </body>
