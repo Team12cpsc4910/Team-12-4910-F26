@@ -643,3 +643,30 @@ def admin_report_csv(report):
     writer.writerows([[csv_safe(value) for value in row] for row in rows])
     return Response(output.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment; filename={report}.csv'})
+
+def get_application_log(sponsor_id=None):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT l.app_log_id, l.datetime, l.reason, a.app_id, a.state,
+                       d.first_name, d.last_name, s.sponsor_name
+                FROM DriverAppLog l
+                JOIN DriverApp a ON l.app_id = a.app_id
+                JOIN DriverUser d ON a.driver_id = d.driver_id
+                JOIN Sponsor s ON a.sponsor_id = s.sponsor_id
+                WHERE %s IS NULL OR a.sponsor_id = %s
+                ORDER BY l.datetime DESC, l.app_log_id DESC
+            """, (sponsor_id, sponsor_id))
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+@admin_bp.route('/admin/application-log')
+@login_required
+def admin_application_log():
+    require_admin()
+    sponsor_id = request.args.get('sponsor_id', type=int)
+    return render_template('admin_application_log.html', sponsors=get_sponsors(),
+                           log=get_application_log(sponsor_id), selected_sponsor_id=sponsor_id)
