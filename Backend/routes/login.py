@@ -1,9 +1,12 @@
-from flask import Blueprint, request, render_template, session, redirect, g
+import csv
+import io
+
+from flask import Blueprint, request, render_template, session, redirect, g, Response
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
-from routes.rewards import get_sponsor_catalog
-from routes.admin import change_own_password, AdminError
+from routes.rewards import get_sponsor_catalog, require_role
+from routes.admin import change_own_password, AdminError, csv_safe
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -104,6 +107,21 @@ def get_sponsor_point_report(username):
             conn.close()
 
     return report
+
+@auth_bp.route('/sponsor/point-report/download')
+@login_required
+def sponsor_point_report_csv():
+    require_role('Sponsor')
+    rows = [[f"{r['first_name']} {r['last_name']}", r['datetime'], r['points_change'], r['changed_by'], r['reason']]
+            for r in get_sponsor_point_report(g.user['username'])]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Driver', 'Date', 'Change', 'Changed By', 'Reason'])
+    writer.writerows([[csv_safe(value) for value in row] for row in rows])
+    return Response(output.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=driver-point-report.csv'})
+
 
 
 @auth_bp.route('/dashboard')
