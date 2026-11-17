@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -31,6 +32,60 @@ def redemption_key():
 def require_role(role):
     if g.user['user_type'] != role:
         abort(403)
+
+
+def charge_driver(cur, driver, product, request_key):
+    """Record one reward order and deduct its points, inside the caller's transaction.
+
+    The caller must already hold the driver and product row locks and have checked
+    the product is available, priced, and affordable. Returns the redemption ID.
+    """
+    cost = product['point_cost']
+
+    # Find a log row produced by the optional existing log_points_change
+    # trigger. That trigger logs a generic reason; update it if present.
+    cur.execute("""
+        SELECT COALESCE(MAX(point_log_id), 0) AS last_id
+        FROM PointChangeLog WHERE driver_id = %s
+    """, (driver['driver_id'],))
+    previous_log_id = cur.fetchone()['last_id']
+
+    # Save name/cost snapshots so a later product-price change does not
+    # rewrite the history of what the driver spent.
+    cur.execute("""
+        INSERT INTO RewardRedemption
+            (driver_id, sponsor_id, product_id, product_name, points_spent, request_key)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (driver['driver_id'], driver['sponsor_id'], product['product_id'],
+          product['product_name'], cost, request_key))
+    redemption_id = cur.lastrowid
+
+    cur.execute("""
+        UPDATE DriverUser SET points = points - %s
+        WHERE driver_id = %s AND application_status = 'Approved' AND points >= %s
+    """, (cost, driver['driver_id'], cost))
+    if cur.rowcount != 1:
+        raise RedemptionError('Your balance changed. Please try again.')
+
+    reason = f'Reward #{redemption_id}: {product["product_name"]}'
+    cur.execute("""
+        SELECT point_log_id FROM PointChangeLog
+        WHERE driver_id = %s AND point_log_id > %s
+        ORDER BY point_log_id DESC LIMIT 1
+    """, (driver['driver_id'], previous_log_id))
+    triggered_log = cur.fetchone()
+    if triggered_log:
+        cur.execute("""
+            UPDATE PointChangeLog SET reason = %s
+            WHERE point_log_id = %s
+        """, (reason, triggered_log['point_log_id']))
+    else:
+        cur.execute("""
+            INSERT INTO PointChangeLog (driver_id, points_change, reason)
+            VALUES (%s, %s, %s)
+        """, (driver['driver_id'], -cost, reason))
+
+    return redemption_id
 
 
 def redeem_reward(user_id, product_id, request_key, reviewed_cost=None):
@@ -93,48 +148,7 @@ def redeem_reward(user_id, product_id, request_key, reviewed_cost=None):
             if driver['points'] < cost:
                 raise RedemptionError(f'You need {cost} points, but only have {driver["points"]}.')
 
-            # Find a log row produced by the optional existing log_points_change
-            # trigger. That trigger logs a generic reason; update it if present.
-            cur.execute("""
-                SELECT COALESCE(MAX(point_log_id), 0) AS last_id
-                FROM PointChangeLog WHERE driver_id = %s
-            """, (driver['driver_id'],))
-            previous_log_id = cur.fetchone()['last_id']
-
-            # Save name/cost snapshots so a later product-price change does not
-            # rewrite the history of what the driver spent.
-            cur.execute("""
-                INSERT INTO RewardRedemption
-                    (driver_id, sponsor_id, product_id, product_name, points_spent, request_key)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (driver['driver_id'], driver['sponsor_id'], product_id,
-                  product['product_name'], cost, request_key))
-            redemption_id = cur.lastrowid
-
-            cur.execute("""
-                UPDATE DriverUser SET points = points - %s
-                WHERE driver_id = %s AND application_status = 'Approved' AND points >= %s
-            """, (cost, driver['driver_id'], cost))
-            if cur.rowcount != 1:
-                raise RedemptionError('Your balance changed. Please try again.')
-
-            reason = f'Reward #{redemption_id}: {product["product_name"]}'
-            cur.execute("""
-                SELECT point_log_id FROM PointChangeLog
-                WHERE driver_id = %s AND point_log_id > %s
-                ORDER BY point_log_id DESC LIMIT 1
-            """, (driver['driver_id'], previous_log_id))
-            triggered_log = cur.fetchone()
-            if triggered_log:
-                cur.execute("""
-                    UPDATE PointChangeLog SET reason = %s
-                    WHERE point_log_id = %s
-                """, (reason, triggered_log['point_log_id']))
-            else:
-                cur.execute("""
-                    INSERT INTO PointChangeLog (driver_id, points_change, reason)
-                    VALUES (%s, %s, %s)
-                """, (driver['driver_id'], -cost, reason))
+            redemption_id = charge_driver(cur, driver, product, request_key)
 
         conn.commit()
         return redemption_id
@@ -394,6 +408,159 @@ def driver_cart():
 
     total = sum(item['point_cost'] for item in items if item['available'])
     return render_template('driver_cart.html', driver=driver, items=items, total=total)
+
+
+def item_request_key(request_key, product_id):
+    """Each order row needs its own unique request_key; derive one per reward from the
+    checkout form's key so a resubmitted form maps back to the same orders."""
+    return hashlib.sha256(f'{request_key}:{product_id}'.encode()).hexdigest()[:32]
+
+
+def redeem_cart(user_id, product_ids, request_key, reviewed_total):
+    """Order every reward in product_ids in ONE transaction; returns the redemption IDs.
+
+    Either every reward is ordered and its points deducted, or nothing changes. Uses
+    the same locks and checks as redeem_reward, one order (and point log) per reward.
+    """
+    if not re.fullmatch(r'[0-9a-f]{32}', request_key or ''):
+        raise RedemptionError('Please reload the page and try again.')
+    if not product_ids:
+        raise RedemptionError('There are no rewards to order.')
+    keys = {pid: item_request_key(request_key, pid) for pid in product_ids}
+
+    conn = get_db_connection()
+    try:
+        conn.begin()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT driver_id, sponsor_id, points, application_status
+                FROM DriverUser WHERE user_id = %s FOR UPDATE
+            """, (user_id,))
+            driver = cur.fetchone()
+            if not driver or driver['application_status'] != 'Approved':
+                raise RedemptionError('Your sponsor must approve you before you can redeem rewards.')
+
+            # A resubmitted checkout form returns the orders it already placed
+            placeholders = ', '.join(['%s'] * len(product_ids))
+            cur.execute(f"""
+                SELECT redemption_id, product_id FROM RewardRedemption
+                WHERE driver_id = %s AND request_key IN ({placeholders})
+            """, [driver['driver_id'], *keys.values()])
+            existing = cur.fetchall()
+            if existing:
+                if {row['product_id'] for row in existing} != set(product_ids):
+                    raise RedemptionError('This order request does not match your cart. Please review it again.')
+                conn.rollback()
+                return [row['redemption_id'] for row in existing]
+
+            # Only the driver's own sponsor's products; locked in ID order so two
+            # checkouts can't deadlock each other
+            cur.execute(f"""
+                SELECT product_id, product_name, point_cost, availability
+                FROM ProductCatalog
+                WHERE sponsor_id = %s AND product_id IN ({placeholders})
+                ORDER BY product_id FOR UPDATE
+            """, [driver['sponsor_id'], *product_ids])
+            products = {row['product_id']: row for row in cur.fetchall()}
+
+            for pid in product_ids:
+                product = products.get(pid)
+                if not product:
+                    raise RedemptionError('A reward in your cart is no longer offered by your sponsor.')
+                if not product['availability']:
+                    raise RedemptionError(f'{product["product_name"]} is currently unavailable. '
+                                          'Remove it from your cart or try again later.')
+                if not isinstance(product['point_cost'], int) or product['point_cost'] <= 0:
+                    raise RedemptionError(f'{product["product_name"]} has an invalid points price.')
+
+            total = sum(products[pid]['point_cost'] for pid in product_ids)
+            if total != reviewed_total:
+                raise RedemptionError('A points price changed. Please review the new total.')
+            if driver['points'] < total:
+                raise RedemptionError(f'This order costs {total} points, but you only have {driver["points"]}.')
+
+            redemption_ids = [charge_driver(cur, driver, products[pid], keys[pid])
+                              for pid in product_ids]
+
+        conn.commit()
+        return redemption_ids
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+@rewards_bp.get('/driver/cart/checkout')
+@login_required
+def driver_cart_checkout():
+    require_role('Driver')
+    cart = cart_ids()
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            driver = get_catalog_driver(cur, g.user['user_id'])
+            if not can_view_catalog(driver):
+                return redirect('/driver/catalog')
+            found = {}
+            if cart:
+                placeholders = ', '.join(['%s'] * len(cart))
+                cur.execute(f"""
+                    SELECT product_id,
+                           product_name,
+                           point_cost,
+                           image_url,
+                           availability AS available
+                    FROM ProductCatalog
+                    WHERE sponsor_id = %s AND product_id IN ({placeholders})
+                """, [driver['sponsor_id'], *cart])
+                found = {row['product_id']: row for row in cur.fetchall()}
+    finally:
+        conn.close()
+
+    # Only available, priced rewards can be ordered; the rest stay in the cart
+    items = [found[i] for i in cart if i in found and found[i]['available'] and found[i]['point_cost'] > 0]
+    ordered = {item['product_id'] for item in items}
+    skipped = [found[i] for i in cart if i in found and i not in ordered]
+    if not items:
+        flash('Your cart has no rewards that can be ordered right now.', 'error')
+        return redirect('/driver/cart')
+
+    total = sum(item['point_cost'] for item in items)
+    return render_template('driver_cart_checkout.html', driver=driver, items=items,
+                           skipped=skipped, total=total)
+
+
+@rewards_bp.post('/driver/cart/checkout')
+@login_required
+def confirm_cart_checkout():
+    require_role('Driver')
+    check_csrf()
+
+    # Order exactly the rewards the driver reviewed on the checkout page
+    product_ids = []
+    for pid in request.form.getlist('product_id', type=int):
+        if pid not in product_ids:
+            product_ids.append(pid)
+    reviewed_total = request.form.get('reviewed_total', type=int)
+    if not product_ids or len(product_ids) > MAX_CART_ITEMS or reviewed_total is None:
+        flash('Review your order before confirming.', 'error')
+        return redirect('/driver/cart/checkout')
+
+    try:
+        redemption_ids = redeem_cart(g.user['user_id'], product_ids,
+                                     request.form.get('redemption_key', ''), reviewed_total)
+    except RedemptionError as exc:
+        flash(str(exc), 'error')
+        return redirect('/driver/cart')
+
+    save_cart([i for i in cart_ids() if i not in product_ids])
+    count = len(redemption_ids)
+    flash(f'Order confirmed: {count} reward{"s" if count != 1 else ""} for {reviewed_total} points '
+          f'(order{"s" if count != 1 else ""} #{", #".join(str(i) for i in sorted(redemption_ids))}). '
+          'Check My Reward Orders for status.', 'success')
+    return redirect('/dashboard')
 
 
 def render_driver_reward(product_id, template):

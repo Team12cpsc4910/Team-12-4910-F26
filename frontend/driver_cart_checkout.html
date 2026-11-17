@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Review cart order | Driver checkout</title>
+    <link rel="stylesheet" href="/style.css?v=6">
+</head>
+<body>
+<div class="container checkout">
+    <nav aria-label="Driver navigation">
+        <a href="/dashboard">Driver Dashboard</a>
+        <a href="/driver/catalog">Catalog</a>
+        <a href="/driver/cart">My Cart</a>
+    </nav>
+    <main>
+        <h1>Review your cart order</h1>
+        {% for message in get_flashed_messages() %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+
+        {% for item in items %}
+        <section aria-label="Reward details" class="checkout-item">
+            {% if item.image_url %}<img src="{{ item.image_url }}" alt="">{% endif %}
+            <div>
+                <h2>{{ item.product_name }}</h2>
+                <p>{{ driver.sponsor_name }} &middot; Quantity 1 &middot; {{ item.point_cost }} points</p>
+            </div>
+        </section>
+        {% endfor %}
+
+        {% if skipped %}
+        <p role="status">
+            Not included because {{ 'it is' if skipped | length == 1 else 'they are' }} currently unavailable
+            (still in your cart):
+            {% for item in skipped %}{{ item.product_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+
+        <dl class="checkout-total">
+            <div><dt>Current balance</dt><dd>{{ driver.points }} points</dd></div>
+            <div><dt>Order total ({{ items | length }} reward{{ 's' if items | length != 1 }})</dt><dd>{{ total }} points</dd></div>
+            {% if driver.points >= total %}
+                <div><dt>Balance after order</dt><dd>{{ driver.points - total }} points</dd></div>
+            {% endif %}
+        </dl>
+
+        {% if driver.points < total %}
+            <p role="status">You need {{ total - driver.points }} more points to place this order. Remove a reward from your cart or order rewards one at a time.</p>
+        {% else %}
+            <form method="POST" action="/driver/cart/checkout">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
+                <input type="hidden" name="reviewed_total" value="{{ total }}">
+                {% for item in items %}
+                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                {% endfor %}
+                <button type="submit">Place order for {{ total }} points</button>
+            </form>
+        {% endif %}
+        <p><a href="/driver/cart">Back to cart</a></p>
+    </main>
+</div>
+</body>
+</html>

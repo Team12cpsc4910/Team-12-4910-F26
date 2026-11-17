@@ -101,6 +101,12 @@
                 {% endif %}
             </dd>
         </dl>
+
+        {% if total > 0 %}
+        <form method="GET" action="/driver/cart/checkout">
+            <button type="submit">Check out cart</button>
+        </form>
+        {% endif %}
         {% endif %}
 
     </main>
