@@ -148,30 +148,36 @@
       
       <h2>My Reward Orders</h2>
 
-      <table class="catalog-table">
+      <table class="catalog-table report-table">
           <thead>
               <tr>
+                  <th>Order #</th>
                   <th>Reward</th>
                   <th>Points Spent</th>
                   <th>Status</th>
                   <th>Purchased</th>
+                  <th>Fulfilled</th>
               </tr>
           </thead>
-      
+
           <tbody>
               {% if redemptions %}
                   {% for order in redemptions %}
                   <tr>
+                      <td>#{{ order.redemption_id }}</td>
                       <td>{{ order.product_name }}</td>
                       <td>{{ order.points_spent }}</td>
-                      <td>{{ order.status }}</td>
-                      <td>{{ order.redeemed_at }}</td>
+                      <td>
+                          <span class="status {{ order.status | lower }}">{{ order.status }}</span>
+                      </td>
+                      <td class="date">{{ order.redeemed_at.strftime('%b %d, %Y %I:%M %p') if order.redeemed_at else '' }}</td>
+                      <td class="date">{{ order.fulfilled_at.strftime('%b %d, %Y %I:%M %p') if order.fulfilled_at else 'Not yet' }}</td>
                   </tr>
                   {% endfor %}
-      
+
               {% else %}
                   <tr>
-                      <td colspan="4" class="catalog-empty">
+                      <td colspan="6" class="catalog-empty">
                           No reward orders yet.
                       </td>
                   </tr>
