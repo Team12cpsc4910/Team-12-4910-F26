@@ -183,6 +183,34 @@ def redeem_product(product_id):
     return redirect('/dashboard')
 
 
+# Order status: one of the logged-in driver's own reward orders. Dropped drivers can still
+# look up orders they placed before, so this doesn't require an approved application.
+@rewards_bp.get('/driver/orders/<int:redemption_id>')
+@login_required
+def driver_order(redemption_id):
+    require_role('Driver')
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT r.redemption_id, r.product_id, r.product_name, r.points_spent,
+                       r.status, r.redeemed_at, r.fulfilled_at,
+                       s.sponsor_name
+                FROM RewardRedemption r
+                JOIN DriverUser d ON r.driver_id = d.driver_id
+                LEFT JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                WHERE r.redemption_id = %s AND d.user_id = %s
+            """, (redemption_id, g.user['user_id']))
+            order = cur.fetchone()
+    finally:
+        conn.close()
+
+    # Someone else's order looks the same as one that doesn't exist
+    if not order:
+        abort(404)
+    return render_template('driver_order.html', order=order)
+
+
 def sponsor_id_for_user(cur, user_id):
     cur.execute('SELECT sponsor_id FROM SponsorUser WHERE user_id = %s', (user_id,))
     sponsor = cur.fetchone()

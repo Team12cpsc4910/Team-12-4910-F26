@@ -164,7 +164,7 @@
               {% if redemptions %}
                   {% for order in redemptions %}
                   <tr>
-                      <td>#{{ order.redemption_id }}</td>
+                      <td><a href="/driver/orders/{{ order.redemption_id }}">#{{ order.redemption_id }}</a></td>
                       <td>{{ order.product_name }}</td>
                       <td>{{ order.points_spent }}</td>
                       <td>

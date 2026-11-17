@@ -543,3 +543,58 @@ a:hover {
   color: #4ade80;
   border: 1px solid rgba(74, 222, 128, 0.3);
 }
+
+/* Order status page: fulfillment steps */
+.order-steps {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+
+.order-steps li {
+  position: relative;
+  padding: 0 0 20px 32px;
+  color: #94a3b8;
+}
+
+.order-steps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #475569;
+}
+
+.order-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 21px;
+  bottom: 0;
+  width: 2px;
+  background: #475569;
+}
+
+.order-steps li.done {
+  color: #e2e8f0;
+}
+
+.order-steps li.done::before {
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+.order-steps li.done:not(:last-child)::after {
+  background: #4ade80;
+}
+
+.order-steps strong {
+  display: block;
+}
+
+.order-steps small {
+  color: #94a3b8;
+}

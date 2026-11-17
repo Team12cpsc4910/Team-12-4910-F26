@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Order #{{ order.redemption_id }} | Order status</title>
+    <link rel="stylesheet" href="/style.css?v=7">
+</head>
+<body>
+<div class="container checkout">
+    <nav aria-label="Driver navigation">
+        <a href="/dashboard">Driver Dashboard</a>
+        <a href="/driver/catalog">Catalog</a>
+        <a href="/driver/cart">My Cart</a>
+    </nav>
+    <main>
+        <h1>Order #{{ order.redemption_id }}</h1>
+
+        <section aria-label="Reward details" class="checkout-item">
+            <div>
+                <h2>{{ order.product_name }}</h2>
+                <p>
+                    {{ order.sponsor_name or 'Your sponsor' }} &middot; Quantity 1 &middot;
+                    <span class="status {{ order.status | lower }}">{{ order.status }}</span>
+                </p>
+            </div>
+        </section>
+
+        {% set fulfilled = order.status == 'Fulfilled' %}
+        <h2>Fulfillment</h2>
+        <ol class="order-steps">
+            <li class="done">
+                <strong>Order placed</strong>
+                <small>{{ order.redeemed_at.strftime('%b %d, %Y %I:%M %p') if order.redeemed_at else '' }}
+                    &middot; {{ order.points_spent }} points deducted</small>
+            </li>
+            <li class="{{ 'done' if fulfilled else '' }}"{% if not fulfilled %} aria-current="step"{% endif %}>
+                <strong>Waiting for your sponsor</strong>
+                <small>{{ 'Your sponsor received the order.' if fulfilled else 'Your sponsor is preparing your reward.' }}</small>
+            </li>
+            <li class="{{ 'done' if fulfilled else '' }}"{% if fulfilled %} aria-current="step"{% endif %}>
+                <strong>Fulfilled</strong>
+                <small>
+                    {% if fulfilled and order.fulfilled_at %}
+                        {{ order.fulfilled_at.strftime('%b %d, %Y %I:%M %p') }}
+                    {% elif fulfilled %}
+                        Your reward has been delivered.
+                    {% else %}
+                        Not yet
+                    {% endif %}
+                </small>
+            </li>
+        </ol>
+
+        <dl class="checkout-total">
+            <div><dt>Status</dt><dd>{{ order.status }}</dd></div>
+            <div><dt>Points spent</dt><dd>{{ order.points_spent }} points</dd></div>
+            <div><dt>Ordered</dt><dd>{{ order.redeemed_at.strftime('%b %d, %Y %I:%M %p') if order.redeemed_at else '' }}</dd></div>
+            <div><dt>Fulfilled</dt><dd>{{ order.fulfilled_at.strftime('%b %d, %Y %I:%M %p') if order.fulfilled_at else 'Not yet' }}</dd></div>
+        </dl>
+
+        <p><a href="/dashboard">Back to My Reward Orders</a></p>
+    </main>
+</div>
+</body>
+</html>
