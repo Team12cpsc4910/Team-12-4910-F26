@@ -11,7 +11,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 import pymysql
-from flask import Blueprint, abort, flash, g, redirect, request, render_template
+from flask import Blueprint, abort, flash, g, redirect, request, render_template, session
 
 from database import get_db_connection
 from security import check_csrf, login_required
@@ -161,6 +161,10 @@ def redeem_product(product_id):
         flash(str(exc), 'error')
         return redirect('/driver/catalog')
     else:
+        # A reward bought from the cart no longer needs to sit in it
+        cart = cart_ids()
+        if product_id in cart:
+            save_cart([i for i in cart if i != product_id])
         flash(f'Reward order #{redemption_id} confirmed. Check My Reward Orders for its status.', 'success')
     return redirect('/dashboard')
 
@@ -285,6 +289,111 @@ def driver_product(product_id):
 @login_required
 def driver_checkout(product_id):
     return render_driver_reward(product_id, 'driver_checkout.html')
+
+
+# Driver cart: kept in the login session (no database table), so it's per-browser and is cleared
+# on logout. Each entry is one product ID (quantity 1, like the Review order page).
+MAX_CART_ITEMS = 25
+
+
+def cart_ids():
+    cart = session.get('cart')
+    # A cart left in this browser by a different account never carries over
+    if not isinstance(cart, dict) or cart.get('user_id') != g.user['user_id']:
+        return []
+    return [i for i in cart.get('items', []) if isinstance(i, int)]
+
+
+def save_cart(ids):
+    session['cart'] = {'user_id': g.user['user_id'], 'items': ids}
+
+
+@rewards_bp.post('/driver/cart/<int:product_id>/add')
+@login_required
+def add_to_cart(product_id):
+    require_role('Driver')
+    check_csrf()
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            driver = get_catalog_driver(cur, g.user['user_id'])
+            if not can_view_catalog(driver):
+                return redirect('/driver/catalog')
+            # Only products from the driver's own sponsor's catalog
+            cur.execute("""
+                SELECT product_name, availability AS available
+                FROM ProductCatalog
+                WHERE product_id = %s AND sponsor_id = %s
+            """, (product_id, driver['sponsor_id']))
+            product = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not product:
+        abort(404)
+
+    cart = cart_ids()
+    name = product['product_name']
+    if not product['available']:
+        flash(f"{name} is currently unavailable, so it can't be added to your cart.", 'error')
+    elif product_id in cart:
+        flash(f'{name} is already in your cart.', 'success')
+    elif len(cart) >= MAX_CART_ITEMS:
+        flash(f'Your cart can hold up to {MAX_CART_ITEMS} rewards. Remove one to add another.', 'error')
+    else:
+        save_cart(cart + [product_id])
+        flash(f'{name} added to your cart.', 'success')
+    return redirect('/driver/cart')
+
+
+@rewards_bp.post('/driver/cart/<int:product_id>/remove')
+@login_required
+def remove_from_cart(product_id):
+    require_role('Driver')
+    check_csrf()
+    cart = cart_ids()
+    if product_id in cart:
+        save_cart([i for i in cart if i != product_id])
+        flash('Removed from your cart.', 'success')
+    return redirect('/driver/cart')
+
+
+@rewards_bp.get('/driver/cart')
+@login_required
+def driver_cart():
+    require_role('Driver')
+    cart = cart_ids()
+    items = []
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            driver = get_catalog_driver(cur, g.user['user_id'])
+            if not can_view_catalog(driver):
+                return redirect('/driver/catalog')
+            if cart:
+                placeholders = ', '.join(['%s'] * len(cart))
+                cur.execute(f"""
+                    SELECT product_id,
+                           product_name,
+                           point_cost,
+                           image_url,
+                           availability AS available
+                    FROM ProductCatalog
+                    WHERE sponsor_id = %s AND product_id IN ({placeholders})
+                """, [driver['sponsor_id'], *cart])
+                found = {row['product_id']: row for row in cur.fetchall()}
+                items = [found[i] for i in cart if i in found]
+    finally:
+        conn.close()
+
+    # Drop rewards the sponsor removed (or from a sponsor the driver no longer belongs to)
+    if len(items) != len(cart):
+        save_cart([item['product_id'] for item in items])
+
+    total = sum(item['point_cost'] for item in items if item['available'])
+    return render_template('driver_cart.html', driver=driver, items=items, total=total)
 
 
 def render_driver_reward(product_id, template):

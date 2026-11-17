@@ -16,6 +16,7 @@
 
     <nav>
         <a href="/dashboard">Driver Dashboard</a>
+        <a href="/driver/cart">My Cart</a>
         <a href="/applications">Applications</a>
         <a href="/logout">Log Out</a>
     </nav>
@@ -179,6 +180,15 @@
                             <!-- Redemption -->
 
                             <td>
+
+                                {% if item.available and item.point_cost > 0 %}
+
+                                <form method="POST" action="/driver/cart/{{ item.product_id }}/add">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit">Add to Cart</button>
+                                </form>
+
+                                {% endif %}
 
                                 {% if item.available
                                       and item.point_cost > 0

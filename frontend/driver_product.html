@@ -17,6 +17,7 @@
     <nav>
         <a href="/dashboard">Driver Dashboard</a>
         <a href="/driver/catalog">My Sponsor's Catalog</a>
+        <a href="/driver/cart">My Cart</a>
         <a href="/applications">Applications</a>
         <a href="/logout">Log Out</a>
     </nav>
@@ -73,6 +74,15 @@
             <dt>Sponsor</dt>
             <dd>{{ driver.sponsor_name }}</dd>
         </dl>
+
+        <!-- Cart: any available reward can be saved to review later -->
+
+        {% if item.available and item.point_cost > 0 %}
+            <form method="POST" action="/driver/cart/{{ item.product_id }}/add">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">Add to Cart</button>
+            </form>
+        {% endif %}
 
         <!-- Redemption: same rules as the catalog list -->
 
