@@ -133,7 +133,9 @@ def redeem_reward(user_id, product_id, request_key, reviewed_cost=None):
             cur.execute("""
                 SELECT product_id, product_name, point_cost, availability
                 FROM ProductCatalog
-                WHERE product_id = %s AND sponsor_id = %s FOR UPDATE
+                WHERE product_id = %s AND sponsor_id = %s
+                  AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
+                FOR UPDATE
             """, (product_id, driver['sponsor_id']))
             product = cur.fetchone()
             if not product:
@@ -216,8 +218,72 @@ def sponsor_id_for_user(cur, user_id):
     sponsor = cur.fetchone()
     return sponsor['sponsor_id'] if sponsor else None
 
+CATEGORIES = ('Games', 'Gift Cards', 'Electronics', 'Entertainment', 'Other')
 
-def get_sponsor_catalog(user_id):
+CONTENT_RATINGS = ('G', 'PG')
+
+CATALOG_MAX_POINTS = 1000000
+
+DEFAULT_CATALOG_RULES = {
+    'min_points': 1,
+    'max_points': CATALOG_MAX_POINTS,
+    'allowed_categories': ','.join(CATEGORIES),
+    'allow_g': 1,
+    'allow_pg': 1,
+}
+
+
+class CatalogValidationError(ValueError):
+    pass
+
+
+def parse_points(value, *, optional=False):
+    value = str(value or '').strip()
+
+    if optional and not value:
+        return None
+
+    if not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= CATALOG_MAX_POINTS:
+        raise CatalogValidationError(
+            'Points must be whole numbers from 1 to 1,000,000.'
+        )
+
+    return int(value)
+
+
+def validate_rating_category(category, rating):
+    if category not in CATEGORIES:
+        raise CatalogValidationError('Select a valid reward category.')
+
+    if rating not in CONTENT_RATINGS:
+        raise CatalogValidationError(
+            'A sponsor must confirm the reward is rated G or PG.'
+        )
+
+
+def get_catalog_rules(cur, sponsor_id):
+    cur.execute("""
+        SELECT min_points, max_points, allowed_categories, allow_g, allow_pg
+        FROM CatalogGenerationRules WHERE sponsor_id = %s
+    """, (sponsor_id,))
+
+    return cur.fetchone() or DEFAULT_CATALOG_RULES.copy()
+
+
+def matches_catalog_rules(points, category, rating, rules):
+    if rating not in CONTENT_RATINGS or category not in CATEGORIES:
+        return False
+
+    allowed = set(str(rules['allowed_categories']).split(','))
+
+    return (
+        rules['min_points'] <= points <= rules['max_points']
+        and category in allowed
+        and (rating != 'G' or bool(rules['allow_g']))
+        and (rating != 'PG' or bool(rules['allow_pg']))
+    )
+
+def get_sponsor_catalog(user_id, *, search='', availability='', min_points='', max_points='', sort='name'):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
