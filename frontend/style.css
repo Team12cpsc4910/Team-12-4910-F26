@@ -939,10 +939,101 @@ a:hover {
   }
 }
 
+/* Create Account page: one centered card */
+.auth-single {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 24px 64px;
+  box-sizing: border-box;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.auth-card .password-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  color: #94a3b8;
+}
+
+.auth-card .password-reqs li {
+  margin: 0;
+}
+
+.auth-card .password-reqs li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #475569;
+}
+
+.auth-card .password-reqs li.valid {
+  color: #4ade80;
+}
+
+.auth-card .password-reqs li.valid::before {
+  content: "";
+  background: #4ade80;
+}
+
+/* A link that looks like the main button */
+.button-link {
+  display: block;
+  padding: 14px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+.button-link:hover {
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 114, 255, 0.6);
+}
+
+.auth-success {
+  text-align: center;
+}
+
+.auth-success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  color: #0b1220;
+  background: linear-gradient(135deg, #00e676, #00c6ff);
+  box-shadow: 0 8px 24px rgba(0, 230, 118, 0.3);
+}
+
 /* Phones: keep the login form near the top of the screen */
 @media (max-width: 600px) {
   .auth-features {
     display: none;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .auth-single {
+    padding: 8px 16px 48px;
   }
 
   .auth-intro .lead {
