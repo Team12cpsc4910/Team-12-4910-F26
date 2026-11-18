@@ -402,14 +402,14 @@ def driver_catalog():
 
             if can_view_catalog(driver):
 
-            cur.execute("""
-            SELECT DISTINCT category FROM ProductCatalog
-            WHERE sponsor_id = %s AND catalog_enabled = TRUE
-              AND content_rating IN ('G', 'PG')
-            ORDER BY category
-        """, (driver['sponsor_id'],))
-        
-        categories = [row['category'] for row in cur.fetchall()]
+                cur.execute("""
+                    SELECT DISTINCT category FROM ProductCatalog
+                    WHERE sponsor_id = %s AND catalog_enabled = TRUE
+                      AND content_rating IN ('G', 'PG')
+                    ORDER BY category
+                """, (driver['sponsor_id'],))
+                
+                categories = [row['category'] for row in cur.fetchall()]
 
                 query = """
                     SELECT product_id,
