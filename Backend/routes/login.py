@@ -189,6 +189,9 @@ def dashboard():
         dropped = False
         dropped_by = None
         rejected = False
+        driver_name = None
+        sponsor_name = None
+        status = None
         conn = None
 
         try:
@@ -197,6 +200,7 @@ def dashboard():
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT d.driver_id,
+                           d.first_name,
                            d.points,
                            d.sponsor_id,
                            d.application_status,
@@ -211,6 +215,9 @@ def dashboard():
 
                 if driver:
                     points = driver['points']
+                    driver_name = driver['first_name']
+                    sponsor_name = driver['sponsor_name']
+                    status = driver['application_status']
 
                     cur.execute("""
                         SELECT p.datetime,
@@ -269,8 +276,20 @@ def dashboard():
             if conn and conn.open:
                 conn.close()
 
+        # Dashboard highlights: the priciest rewards the driver can redeem right now, or
+        # (when none are affordable) the cheapest one to work toward.
+        redeemable = [item for item in catalog if item['available'] and 0 < item['point_cost']]
+        affordable = sorted((item for item in redeemable if item['point_cost'] <= points),
+                            key=lambda item: item['point_cost'], reverse=True)[:4]
+        next_reward = None if affordable else min(redeemable, key=lambda item: item['point_cost'], default=None)
+
         return render_template(
             'driver_dashboard.html',
+            driver_name=driver_name,
+            sponsor_name=sponsor_name,
+            status=status,
+            affordable=affordable,
+            next_reward=next_reward,
             points=points,
             history=history,
             catalog=catalog,

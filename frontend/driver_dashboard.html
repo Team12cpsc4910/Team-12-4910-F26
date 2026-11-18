@@ -7,184 +7,234 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=13">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      {% if session.get('impersonator') %}
-        <div class="success-message" style="text-align: center;">
-          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
-          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Return to Admin</button>
-          </form>
-        </div>
-      {% endif %}
-      <h1 style="text-align: center;">Driver Dashboard</h1>
-      {# Drop alert: shown on every visit while the driver is dropped, with no way to turn it off #}
-      {% if dropped %}
-      <div class="alert-message" role="alert">
-        <strong>Account status changed:</strong>
-        {{ dropped_by or 'Your sponsor' }} dropped you from their program.
-        You no longer have access to their catalog or rewards, and they can't change your points.
-        Your points balance and history are kept. You can apply to a sponsor from the
-        <a href="/applications">Applications</a> tab.
+{% set open_orders = redemptions | selectattr('status', 'equalto', 'Requested') | list | length %}
+{% set items_in_cart = cart_count() %}
+{% set status_label = {
+  'Approved': ('Active', 'approved'),
+  'Pending': ('Application pending', 'pending'),
+  'Rejected': ('Application rejected', 'rejected'),
+  'Dropped': ('Dropped', 'dropped'),
+}.get(status, ('Not enrolled', 'neutral')) %}
+
+<div class="page">
+  <main>
+
+    {% if session.get('impersonator') %}
+      <div class="notice notice-info">
+        <span>Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).</span>
+        <form action="/admin/stop-assuming" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button-small">Return to Admin</button>
+        </form>
       </div>
-      {% endif %}
-      {% for category, message in get_flashed_messages(with_categories=true) %}
-      <p role="status">{{ message }}</p>
-      {% endfor %}
-      <p style="text-align: center;">Welcome, Driver. Your points and catalog rewards will appear here.</p>
+    {% endif %}
 
-      <h2>Points Balance</h2>
-      <p><span class="status in-stock" style="font-size: 1.5em;">{{ points }} Points</span></p>
+    {# Drop alert: shown on every visit while the driver is dropped, with no way to turn it off #}
+    {% if dropped %}
+    <div class="alert-message" role="alert">
+      <strong>Account status changed:</strong>
+      {{ dropped_by or 'Your sponsor' }} dropped you from their program.
+      You no longer have access to their catalog or rewards, and they can't change your points.
+      Your points balance and history are kept. You can apply to a sponsor from the
+      <a href="/applications">Applications</a> tab.
+    </div>
+    {% endif %}
 
-      <h2>Point History</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Change</th>
-            <th>Sponsor</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if history %}
-            {% for row in history %}
-            <tr>
-              <td>{{ row.datetime }}</td>
-              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
-              <td>{{ row.sponsor_name }}</td>
-              <td>{{ row.reason }}</td>
-            </tr>
-            {% endfor %}
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+      <p class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }}" role="status">{{ message }}</p>
+    {% endfor %}
+
+    <!-- Greeting -->
+    <section class="page-heading">
+      <div>
+        <h1>Welcome back{% if driver_name or session.get('username') %}, {{ driver_name or session.get('username') }}{% endif %}</h1>
+        <p>
+          {% if sponsor_name and status == 'Approved' %}
+            You're earning points with <strong>{{ sponsor_name }}</strong>.
+          {% elif status == 'Pending' %}
+            Your application is waiting for a sponsor's review.
           {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No point history available yet.</td>
-            </tr>
+            Here's an overview of your points and rewards.
           {% endif %}
-        </tbody>
-      </table>
-
-      <!-- Sponsor catalog: only products from the driver's own sponsor, and only after their application is approved -->
-      <h2>My Sponsor's Catalog</h2>
-      {% if dropped %}
-      <p class="catalog-empty">You've been dropped from your sponsor's program, so their catalog is no longer available. You can apply to a sponsor from the Applications tab.</p>
-      {% elif rejected %}
-      <p class="catalog-empty">Your application was rejected. You can view the reason and apply again on the Applications page.</p>
-      {% elif not approved %}
-      <p class="catalog-empty">Your catalog will be available once a sponsor approves your application.</p>
-      {% else %}
-      <table class="catalog-table">
-          <thead>
-              <tr>
-                  <th>Product</th>
-                  <th>Price (points)</th>
-                  <th>Availability</th>
-                  <th>Redeem</th>
-              </tr>
-          </thead>
-      
-          <tbody>
-              {% if catalog %}
-                  {% for item in catalog %}
-                  <tr>
-                      <td>{{ item.product_name }}</td>
-                      <td>{{ item.point_cost }}</td>
-      
-                      <td>
-                          {% if item.available %}
-                              <span class="status in-stock">In Stock</span>
-                          {% else %}
-                              <span class="status out-of-stock">Out of Stock</span>
-                          {% endif %}
-                      </td>
-      
-                      <td>
-                          {% if item.available and points >= item.point_cost %}
-      
-                          <form method="GET" action="/driver/catalog/{{ item.product_id }}/checkout">
-                              <button type="submit">Redeem</button>
-                          </form>
-      
-                          {% elif not item.available %}
-      
-                              Unavailable
-      
-                          {% else %}
-      
-                              Not enough points
-      
-                          {% endif %}
-                      </td>
-                  </tr>
-                  {% endfor %}
-      
-              {% else %}
-                  <tr>
-                      <td colspan="4" class="catalog-empty">
-                          Your sponsor hasn't added any products yet.
-                      </td>
-                  </tr>
-              {% endif %}
-          </tbody>
-      </table>
+        </p>
+      </div>
+      {% if approved %}
+        <a class="button-link button-inline" href="/driver/catalog">{{ icon('gift', 18) }} Browse rewards</a>
+      {% elif not status or status in ('Not Applied', 'Rejected', 'Dropped') %}
+        <a class="button-link button-inline" href="/applications">{{ icon('file', 18) }} Apply to a sponsor</a>
       {% endif %}
-      <p>
-          <small>
-              Game titles and retail pricing in the sponsor
-              catalog may be sourced from
-              <a href="https://gg.deals/">GG.deals</a>.
-      
-              Points prices are set when the sponsor adds
-              a reward and are not live quotes.
-          </small>
-      </p>
-      
-      <h2>My Reward Orders</h2>
+    </section>
 
-      <table class="catalog-table report-table">
-          <thead>
+    <!-- Summary cards -->
+    <section class="stat-grid" aria-label="Summary">
+      <div class="stat-card stat-card-primary">
+        <span class="stat-icon">{{ icon('coins', 22) }}</span>
+        <span class="stat-label">Points balance</span>
+        <strong class="stat-value">{{ '{:,}'.format(points) }}</strong>
+        {% if approved %}<a href="/driver/catalog" class="stat-link">Spend points {{ icon('arrow-right', 16) }}</a>{% endif %}
+      </div>
+
+      <a class="stat-card" href="/driver/cart">
+        <span class="stat-icon">{{ icon('cart', 22) }}</span>
+        <span class="stat-label">In your cart</span>
+        <strong class="stat-value">{{ items_in_cart }}</strong>
+        <span class="stat-link">View cart {{ icon('arrow-right', 16) }}</span>
+      </a>
+
+      <a class="stat-card" href="#orders">
+        <span class="stat-icon">{{ icon('package', 22) }}</span>
+        <span class="stat-label">Open orders</span>
+        <strong class="stat-value">{{ open_orders }}</strong>
+        <span class="stat-link">{{ redemptions | length }} total {{ icon('arrow-right', 16) }}</span>
+      </a>
+
+      <a class="stat-card" href="/applications">
+        <span class="stat-icon">{{ icon('badge-check', 22) }}</span>
+        <span class="stat-label">Program status</span>
+        <strong class="stat-value stat-value-small"><span class="status {{ status_label[1] }}">{{ status_label[0] }}</span></strong>
+        <span class="stat-link">{{ sponsor_name if sponsor_name and status != 'Not Applied' else 'Applications' }} {{ icon('arrow-right', 16) }}</span>
+      </a>
+    </section>
+
+    <div class="dash-columns">
+
+      <!-- Recent point activity -->
+      <section class="panel" aria-labelledby="activity-title">
+        <div class="panel-heading">
+          <h2 id="activity-title">{{ icon('activity', 20) }} Point activity</h2>
+          {% if history %}<span class="panel-meta">{{ history | length }} change{{ '' if history | length == 1 else 's' }}</span>{% endif %}
+        </div>
+
+        {% macro activity_row(row) %}
+          <li>
+            <span class="activity-change {{ 'points-up' if row.points_change > 0 else 'points-down' }}">
+              {% if row.points_change > 0 %}+{% endif %}{{ '{:,}'.format(row.points_change) }}
+            </span>
+            <span class="activity-body">
+              <span class="activity-reason">{{ row.reason }}</span>
+              <span class="activity-meta">
+                {{ row.sponsor_name }}{% if row.datetime %} &middot; {{ row.datetime.strftime('%b %d, %Y') }}{% endif %}
+              </span>
+            </span>
+          </li>
+        {% endmacro %}
+
+        {% if history %}
+          <ul class="activity-list">
+            {% for row in history[:6] %}{{ activity_row(row) }}{% endfor %}
+          </ul>
+          {% if history | length > 6 %}
+            <details class="show-more">
+              <summary>Show all {{ history | length }} changes</summary>
+              <ul class="activity-list">
+                {% for row in history[6:] %}{{ activity_row(row) }}{% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+        {% else %}
+          <p class="empty-state">No point changes yet. Points your sponsor adds or removes will show up here.</p>
+        {% endif %}
+      </section>
+
+      <!-- Rewards highlight -->
+      <section class="panel" aria-labelledby="rewards-title">
+        <div class="panel-heading">
+          <h2 id="rewards-title">{{ icon('gift', 20) }} {{ 'Redeem now' if affordable else 'Rewards' }}</h2>
+          {% if approved %}<a href="/driver/catalog" class="panel-meta">See all</a>{% endif %}
+        </div>
+
+        {% if dropped %}
+          <p class="empty-state">You've been dropped from your sponsor's program, so their catalog is no longer available.</p>
+        {% elif rejected %}
+          <p class="empty-state">Your application was rejected. You can view the reason and apply again on the <a href="/applications">Applications</a> page.</p>
+        {% elif not approved %}
+          <p class="empty-state">Your sponsor's rewards will appear here once your application is approved.</p>
+        {% elif affordable %}
+          <ul class="reward-list">
+            {% for item in affordable %}
+              <li>
+                <a href="/driver/catalog/{{ item.product_id }}" class="reward-name">{{ item.product_name }}</a>
+                <span class="reward-cost">{{ '{:,}'.format(item.point_cost) }} pts</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% elif next_reward %}
+          {% set progress = (points * 100 // next_reward.point_cost) if next_reward.point_cost else 0 %}
+          <div class="next-reward">
+            <p>Almost there! Your next reward:</p>
+            <a href="/driver/catalog/{{ next_reward.product_id }}" class="reward-name">{{ next_reward.product_name }}</a>
+            <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress }}"
+                 aria-label="Progress toward {{ next_reward.product_name }}">
+              <span style="width: {{ progress }}%"></span>
+            </div>
+            <p class="panel-meta">
+              {{ '{:,}'.format(points) }} / {{ '{:,}'.format(next_reward.point_cost) }} points &middot;
+              {{ '{:,}'.format(next_reward.point_cost - points) }} to go
+            </p>
+          </div>
+        {% else %}
+          <p class="empty-state">Your sponsor hasn't added any rewards yet.</p>
+        {% endif %}
+
+        {% if approved %}
+          <p class="attribution">
+            Game titles and retail pricing may be sourced from <a href="https://gg.deals/">GG.deals</a>.
+            Points prices are set by your sponsor and are not live quotes.
+          </p>
+        {% endif %}
+      </section>
+
+    </div>
+
+    <!-- Orders -->
+    <section class="panel" id="orders" aria-labelledby="orders-title">
+      <div class="panel-heading">
+        <h2 id="orders-title">{{ icon('package', 20) }} My Reward Orders</h2>
+        {% if redemptions %}<span class="panel-meta">Select an order number to track it</span>{% endif %}
+      </div>
+
+      {% if redemptions %}
+        <div class="table-scroll">
+          <table class="catalog-table report-table">
+            <thead>
               <tr>
-                  <th>Order #</th>
-                  <th>Reward</th>
-                  <th>Points Spent</th>
-                  <th>Status</th>
-                  <th>Purchased</th>
-                  <th>Fulfilled</th>
+                <th>Order #</th>
+                <th>Reward</th>
+                <th class="num">Points</th>
+                <th>Status</th>
+                <th>Purchased</th>
+                <th>Fulfilled</th>
               </tr>
-          </thead>
+            </thead>
+            <tbody>
+              {% for order in redemptions %}
+              <tr>
+                <td><a href="/driver/orders/{{ order.redemption_id }}">#{{ order.redemption_id }}</a></td>
+                <td>{{ order.product_name }}</td>
+                <td class="num">{{ '{:,}'.format(order.points_spent) }}</td>
+                <td><span class="status {{ order.status | lower }}">{{ order.status }}</span></td>
+                <td class="date">{{ order.redeemed_at.strftime('%b %d, %Y %I:%M %p') if order.redeemed_at else '' }}</td>
+                <td class="date">{{ order.fulfilled_at.strftime('%b %d, %Y %I:%M %p') if order.fulfilled_at else 'Not yet' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">
+          No reward orders yet.{% if approved %} Find something you like in the <a href="/driver/catalog">rewards catalog</a>.{% endif %}
+        </p>
+      {% endif %}
+    </section>
 
-          <tbody>
-              {% if redemptions %}
-                  {% for order in redemptions %}
-                  <tr>
-                      <td><a href="/driver/orders/{{ order.redemption_id }}">#{{ order.redemption_id }}</a></td>
-                      <td>{{ order.product_name }}</td>
-                      <td>{{ order.points_spent }}</td>
-                      <td>
-                          <span class="status {{ order.status | lower }}">{{ order.status }}</span>
-                      </td>
-                      <td class="date">{{ order.redeemed_at.strftime('%b %d, %Y %I:%M %p') if order.redeemed_at else '' }}</td>
-                      <td class="date">{{ order.fulfilled_at.strftime('%b %d, %Y %I:%M %p') if order.fulfilled_at else 'Not yet' }}</td>
-                  </tr>
-                  {% endfor %}
-
-              {% else %}
-                  <tr>
-                      <td colspan="6" class="catalog-empty">
-                          No reward orders yet.
-                      </td>
-                  </tr>
-              {% endif %}
-          </tbody>
-      </table>
-    </main>
-  </div>
+  </main>
+</div>
 </body>
 </html>
