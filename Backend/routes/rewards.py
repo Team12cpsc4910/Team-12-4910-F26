@@ -478,6 +478,11 @@ def cart_ids():
     return [i for i in cart.get('items', []) if isinstance(i, int)]
 
 
+def cart_count():
+    """Number of rewards in the logged-in driver's cart, for the header's cart badge."""
+    return len(cart_ids()) if g.get('user') else 0
+
+
 def save_cart(ids):
     session['cart'] = {'user_id': g.user['user_id'], 'items': ids}
 

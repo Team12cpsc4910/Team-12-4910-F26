@@ -1076,3 +1076,278 @@ a:hover {
     font-size: 0.85em;
   }
 }
+
+/* ===== Logged-in pages: shared header (_app_header.html) ===== */
+.app-body {
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.app-body > .container {
+  margin: 32px auto 48px;
+}
+
+.icon {
+  flex: none;
+  display: block;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(11, 18, 32, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 24px;
+  box-sizing: border-box;
+}
+
+.app-header .brand-mark {
+  width: 34px;
+  height: 34px;
+}
+
+/* Overrides the site-wide nav bar styles */
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  justify-content: flex-start;
+}
+
+.app-nav a.app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.92em;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.app-nav a.app-nav-link:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-nav a.app-nav-link.active {
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.1);
+}
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Round icon-only buttons, e.g. the cart */
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: #cbd5e1;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.icon-button:hover,
+.icon-button.active {
+  color: #00e676;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Item count on the cart icon */
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  border: 2px solid #0b1220;
+  background: #00e676;
+  color: #0b1220;
+  font-size: 0.68em;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* Account menu: avatar button with a dropdown */
+.user-menu {
+  position: relative;
+}
+
+.user-menu-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.user-menu-button::-webkit-details-marker {
+  display: none;
+}
+
+.user-menu-button:hover,
+.user-menu[open] .user-menu-button {
+  border-color: rgba(0, 230, 118, 0.5);
+  color: #f8fafc;
+}
+
+.user-menu-button:focus-visible,
+.icon-button:focus-visible,
+.app-nav a.app-nav-link:focus-visible {
+  outline: 2px solid #00e676;
+  outline-offset: 2px;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #0b1220;
+  background: linear-gradient(135deg, #00e676, #00c6ff);
+}
+
+.user-menu-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 0.92em;
+}
+
+.user-menu[open] .user-menu-button > .icon:last-child {
+  transform: rotate(180deg);
+}
+
+.user-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 230px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #111c31;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.7);
+}
+
+.user-menu-header {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-menu-header strong {
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu-header span {
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+.user-menu-panel a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.95em;
+}
+
+.user-menu-panel a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.user-menu-panel a.user-menu-logout {
+  color: #fca5a5;
+}
+
+.user-menu-panel a.user-menu-logout:hover {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* Tablets: the main links move to their own scrollable row */
+@media (max-width: 900px) {
+  .app-header-inner {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 10px 16px 0;
+  }
+
+  .app-nav {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .app-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-body > .container {
+    margin: 20px 16px 40px;
+    padding: 24px 20px;
+  }
+}
+
+/* Phones: the account button shows just the avatar */
+@media (max-width: 520px) {
+  .user-menu-name,
+  .user-menu-button > .icon {
+    display: none;
+  }
+
+  .user-menu-button {
+    padding: 3px;
+  }
+}

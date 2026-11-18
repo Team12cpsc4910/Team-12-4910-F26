@@ -1,0 +1,108 @@
+{#- Shared header for logged-in pages: {% include '_app_header.html' %} right after <body class="app-body">.
+    Shows the logo (goes to the dashboard), the role's main links with the current page highlighted,
+    and on the right the cart (drivers) and an account menu with profile, password, and log out. -#}
+{% from '_icons.html' import icon %}
+{% set role = session.get('user_type', '') %}
+{% set username = session.get('username', '') %}
+
+{% if role == 'Driver' %}
+  {% set nav_links = [
+    ('/dashboard', 'Dashboard', 'home', ['/dashboard', '/driver/orders']),
+    ('/driver/catalog', 'Rewards Catalog', 'gift', ['/driver/catalog']),
+    ('/applications', 'Applications', 'file', ['/applications']),
+  ] %}
+{% elif role == 'Sponsor' %}
+  {% set nav_links = [
+    ('/dashboard', 'Dashboard', 'home', ['/dashboard']),
+    ('/sponsor/drivers', 'Drivers', 'users', ['/sponsor/drivers', '/sponsor/driver']),
+    ('/sponsor/applications', 'Applications', 'file', ['/sponsor/applications', '/sponsor/application']),
+    ('/sponsor/redemptions', 'Reward Orders', 'package', ['/sponsor/redemptions']),
+    ('/sponsor/company', 'Company', 'building', ['/sponsor/company']),
+  ] %}
+{% elif role == 'Admin' %}
+  {% set nav_links = [
+    ('/dashboard', 'Dashboard', 'home', ['/dashboard']),
+    ('/admin/drivers', 'Drivers', 'users', ['/admin/drivers']),
+    ('/admin/sponsor-users', 'Sponsor Users', 'building', ['/admin/sponsor-users']),
+    ('/admin/admin-users', 'Admin Users', 'shield', ['/admin/admin-users']),
+    ('/admin/reports', 'Reports', 'chart', ['/admin/reports']),
+    ('/admin/application-log', 'Application Log', 'list', ['/admin/application-log']),
+  ] %}
+{% else %}
+  {% set nav_links = [] %}
+{% endif %}
+
+<header class="app-header">
+  <div class="app-header-inner">
+
+    <a class="brand" href="/dashboard" aria-label="Good Driver Incentive Program home">
+      <span class="brand-mark" aria-hidden="true">{{ icon('shield') }}</span>
+      <span class="brand-name">Good Driver</span>
+    </a>
+
+    <nav class="app-nav" aria-label="Main">
+      {% for href, label, icon_name, prefixes in nav_links %}
+        {% set ns = namespace(active=false) %}
+        {% for prefix in prefixes %}
+          {% if request.path == prefix or request.path.startswith(prefix ~ '/') %}{% set ns.active = true %}{% endif %}
+        {% endfor %}
+        <a href="{{ href }}" class="app-nav-link{% if ns.active %} active{% endif %}"{% if ns.active %} aria-current="page"{% endif %}>
+          {{ icon(icon_name) }}<span>{{ label }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+
+    <div class="app-actions">
+
+      {% if role == 'Admin' %}
+        <a href="/admin/accounts/new" class="icon-button{% if request.path == '/admin/accounts/new' %} active{% endif %}"
+           aria-label="Create user" title="Create user">{{ icon('user-plus', 22) }}</a>
+      {% endif %}
+
+      {% if role == 'Driver' %}
+        {% set items_in_cart = cart_count() %}
+        <a href="/driver/cart"
+           class="icon-button{% if request.path.startswith('/driver/cart') %} active{% endif %}"
+           aria-label="Cart, {{ items_in_cart }} item{{ '' if items_in_cart == 1 else 's' }}" title="Cart">
+          {{ icon('cart', 22) }}
+          {% if items_in_cart %}<span class="badge" aria-hidden="true">{{ items_in_cart if items_in_cart < 100 else '99+' }}</span>{% endif %}
+        </a>
+      {% endif %}
+
+      <details class="user-menu">
+        <summary class="user-menu-button" aria-label="Account menu for {{ username }}" title="Account">
+          <span class="avatar" aria-hidden="true">{{ icon('user', 18) }}</span>
+          <span class="user-menu-name">{{ username }}</span>
+          {{ icon('chevron-down', 16) }}
+        </summary>
+        <div class="user-menu-panel">
+          <div class="user-menu-header">
+            <strong>{{ username }}</strong>
+            <span>{{ role }} account</span>
+          </div>
+          <a href="/profile">{{ icon('user', 18) }}My Profile</a>
+          <a href="{{ '/admin/password' if role == 'Admin' else '/password' }}">{{ icon('lock', 18) }}Change Password</a>
+          <a href="/logout" class="user-menu-logout">{{ icon('logout', 18) }}Log Out</a>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</header>
+
+<script>
+  // Close the account menu on outside click or Escape, like a normal dropdown
+  (function () {
+    const menu = document.querySelector('.user-menu');
+    if (!menu) return;
+    document.addEventListener('click', function (event) {
+      if (menu.open && !menu.contains(event.target)) menu.open = false;
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && menu.open) {
+        menu.open = false;
+        menu.querySelector('summary').focus();
+      }
+    });
+  })();
+</script>
