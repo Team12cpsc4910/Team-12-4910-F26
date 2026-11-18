@@ -7,13 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=10" />
+  <link rel="stylesheet" href="/style.css?v=12" />
 </head>
 
-<body class="auth-body">
+<body class="{{ 'app-body' if admin_mode else 'auth-body' }}">
 
+{% if admin_mode %}
+{% include '_app_header.html' %}
+{% else %}
   <header class="site-header">
-    <a class="brand" href="{{ '/dashboard' if admin_mode else '/' }}">
+    <a class="brand" href="/">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" />
@@ -23,15 +26,11 @@
       <span>Good Driver <span class="brand-sub">Incentive Program</span></span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      {% if admin_mode %}
-        <a href="/dashboard">Admin Dashboard</a>
-        <a class="nav-cta" href="/logout">Log Out</a>
-      {% else %}
         <a href="https://team12-backend-api.duckdns.org/about">About</a>
         <a class="nav-cta" href="/">Log In</a>
-      {% endif %}
     </nav>
   </header>
+{% endif %}
 
   <main class="auth-single">
 

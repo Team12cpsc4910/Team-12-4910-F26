@@ -2,21 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
 </head>
-<body>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
   <div class="container">
-    <nav>
-      <a href="/profile">My Profile</a>
-      <a href="/admin/drivers">Drivers</a>
-      <a href="/admin/sponsor-users">Sponsor Users</a>
-      <a href="/admin/admin-users">Admin Users</a>            
-      <a href="/admin/accounts/new">Create User</a>
-      <a href="/admin/reports">Reports</a>
-      <a href="/admin/application-log">Application Log</a>
-      <a href="/logout">Log Out</a>
-    </nav>
     <main>
       <h1 style="text-align: center;">Admin Dashboard</h1>
       <p style="text-align: center;">Welcome, Admin. System settings and user management will appear here.</p>
