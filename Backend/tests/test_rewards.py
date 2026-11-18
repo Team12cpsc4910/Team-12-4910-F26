@@ -41,8 +41,18 @@ class FakeCursor:
 
         elif 'from productcatalog' in sql and 'for update' in sql:
             product = d['product']
-            self.result = product.copy() if (params[0] == product['product_id']
-                       and params[1] == d['driver']['sponsor_id']) else None
+        
+            if 'catalog_enabled = true' not in sql or "content_rating in ('g', 'pg')" not in sql:
+                raise AssertionError(
+                    'Redemption must enforce the content rating and catalog visibility gate.'
+                )
+        
+            self.result = product.copy() if (
+                params[0] == product['product_id']
+                and params[1] == d['driver']['sponsor_id']
+                and product['catalog_enabled']
+                and product['content_rating'] in ('G', 'PG')
+            ) else None
 
         elif 'from rewardredemption' in sql and 'request_key' in sql:
             existing = [o for o in d['orders'] if o['driver_id'] == params[0]
@@ -98,12 +108,26 @@ class FakeCursor:
 
 class FakeConnection:
     def __init__(self, *, balance=500, status='Approved', availability=1,
-             sponsor_id=7, price=200, trigger_enabled=True, fail_on_sql=None):
+             sponsor_id=7, price=200, trigger_enabled=True, fail_on_sql=None,
+             content_rating='G', catalog_enabled=True):
+
         self.data = {
-            'driver': {'driver_id': 4, 'sponsor_id': sponsor_id,
-                       'points': balance, 'application_status': status},
-            'product': {'product_id': 12, 'product_name': 'Gas card',
-                        'point_cost': price, 'availability': availability},
+            'driver': {
+                'driver_id': 4,
+                'sponsor_id': sponsor_id,
+                'points': balance,
+                'application_status': status
+            },
+
+            'product': {
+                'product_id': 12,
+                'product_name': 'Gas card',
+                'point_cost': price,
+                'availability': availability,
+                'content_rating': content_rating,
+                'catalog_enabled': catalog_enabled
+            },
+            
             'trigger_enabled': trigger_enabled,
             'orders': [],
             'logs': []
@@ -306,4 +330,26 @@ def test_price_changed_after_review(monkeypatch):
     monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
     with pytest.raises(rewards.RedemptionError, match='price changed'):
         rewards.redeem_reward(42, 12, 'a' * 32, reviewed_cost=200)
+    assert db.data == db.before
+
+@pytest.mark.parametrize('kwargs', [
+    {'content_rating': 'Unrated'},
+    {'content_rating': 'R'},
+    {'catalog_enabled': False},
+])
+def test_hidden_or_unrated_reward_cannot_be_redeemed(monkeypatch, kwargs):
+    db = FakeConnection(**kwargs)
+
+    monkeypatch.setattr(
+        rewards,
+        'get_db_connection',
+        lambda: db
+    )
+
+    with pytest.raises(
+        rewards.RedemptionError,
+        match='not available from your sponsor'
+    ):
+        rewards.redeem_reward(42, 12, 'f' * 32)
+
     assert db.data == db.before

@@ -157,7 +157,24 @@
                                 name="game_slug"
                                 value="{{ game.slug }}"
                             >
-
+                            
+                            <label for="gg-rating">
+                                Sponsor-classified suitability (G / PG)
+                            </label>
+                            
+                            <select id="gg-rating" name="content_rating" required>
+                                <option value="" selected disabled>Choose rating</option>
+                                <option value="G">G</option>
+                                <option value="PG">PG</option>
+                            </select>
+                            
+                            <label>
+                                <input type="checkbox"
+                                       name="auto_managed"
+                                       checked>
+                                Apply generation rules
+                            </label>
+                            
                             <button type="submit">
                                 Add Reward
                             </button>
@@ -176,6 +193,8 @@
                 Prices are checked again when adding a reward.
                 Saved reward prices do not automatically update.
                 Sponsors are responsible for fulfilling redemptions.
+                GG.deals pricing does not establish an age/content rating.
+                Verify the game's rating before selecting G or PG.
             </small>
         </p>
 

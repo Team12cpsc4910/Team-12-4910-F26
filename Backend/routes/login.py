@@ -5,7 +5,7 @@ from flask import Blueprint, request, render_template, session, redirect, g, Res
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
-from routes.rewards import get_sponsor_catalog, require_role
+from routes.rewards import get_sponsor_catalog, require_role, CatalogValidationError
 from routes.admin import change_own_password, AdminError, csv_safe
 
 auth_bp = Blueprint('auth', __name__)
@@ -135,12 +135,30 @@ def dashboard():
     if user_type == "Admin":
         return render_template('admin_dashboard.html')
 
-    elif user_type == "Sponsor":
-        return render_template(
-            'sponsor_dashboard.html',
-            report=get_sponsor_point_report(current_user),
-            catalog=get_sponsor_catalog(session.get('user_id'))
+elif user_type == "Sponsor":
+    catalog_filters = {key: request.args.get(key, '') for key in
+                       ('search', 'availability', 'min_points', 'max_points', 'sort')}
+    try:
+        catalog = get_sponsor_catalog(
+            session.get('user_id'),
+            search=catalog_filters['search'].strip()[:100],
+            availability=catalog_filters['availability'],
+            min_points=catalog_filters['min_points'],
+            max_points=catalog_filters['max_points'],
+            sort=catalog_filters['sort'] or 'name'
         )
+        catalog_error = None
+    except CatalogValidationError as exc:
+        catalog = []
+        catalog_error = str(exc)
+
+    return render_template(
+        'sponsor_dashboard.html',
+        report=get_sponsor_point_report(current_user),
+        catalog=catalog,
+        catalog_filters=catalog_filters,
+        catalog_error=catalog_error,
+    )
         
     elif user_type == "Driver":
         points = 0
@@ -217,7 +235,8 @@ def dashboard():
                                    point_cost,
                                    Availability AS available
                             FROM ProductCatalog
-                            WHERE sponsor_id = %s
+                            WHERE sponsor_id = %s AND catalog_enabled = TRUE
+                              AND content_rating IN ('G', 'PG')
                             ORDER BY product_name
                         """, (driver['sponsor_id'],))
 

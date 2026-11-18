@@ -133,7 +133,9 @@ def redeem_reward(user_id, product_id, request_key, reviewed_cost=None):
             cur.execute("""
                 SELECT product_id, product_name, point_cost, availability
                 FROM ProductCatalog
-                WHERE product_id = %s AND sponsor_id = %s FOR UPDATE
+                WHERE product_id = %s AND sponsor_id = %s
+                  AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
+                FOR UPDATE
             """, (product_id, driver['sponsor_id']))
             product = cur.fetchone()
             if not product:
@@ -216,24 +218,131 @@ def sponsor_id_for_user(cur, user_id):
     sponsor = cur.fetchone()
     return sponsor['sponsor_id'] if sponsor else None
 
+CATEGORIES = ('Games', 'Gift Cards', 'Electronics', 'Entertainment', 'Other')
 
-def get_sponsor_catalog(user_id):
+CONTENT_RATINGS = ('G', 'PG')
+
+CATALOG_MAX_POINTS = 1000000
+
+DEFAULT_CATALOG_RULES = {
+    'min_points': 1,
+    'max_points': CATALOG_MAX_POINTS,
+    'allowed_categories': ','.join(CATEGORIES),
+    'allow_g': 1,
+    'allow_pg': 1,
+}
+
+
+class CatalogValidationError(ValueError):
+    pass
+
+
+def parse_points(value, *, optional=False):
+    value = str(value or '').strip()
+
+    if optional and not value:
+        return None
+
+    if not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= CATALOG_MAX_POINTS:
+        raise CatalogValidationError(
+            'Points must be whole numbers from 1 to 1,000,000.'
+        )
+
+    return int(value)
+
+
+def validate_rating_category(category, rating):
+    if category not in CATEGORIES:
+        raise CatalogValidationError('Select a valid reward category.')
+
+    if rating not in CONTENT_RATINGS:
+        raise CatalogValidationError(
+            'A sponsor must confirm the reward is rated G or PG.'
+        )
+
+
+def get_catalog_rules(cur, sponsor_id):
+    cur.execute("""
+        SELECT min_points, max_points, allowed_categories, allow_g, allow_pg
+        FROM CatalogGenerationRules WHERE sponsor_id = %s
+    """, (sponsor_id,))
+
+    return cur.fetchone() or DEFAULT_CATALOG_RULES.copy()
+
+
+def matches_catalog_rules(points, category, rating, rules):
+    if rating not in CONTENT_RATINGS or category not in CATEGORIES:
+        return False
+
+    allowed = set(str(rules['allowed_categories']).split(','))
+
+    return (
+        rules['min_points'] <= points <= rules['max_points']
+        and category in allowed
+        and (rating != 'G' or bool(rules['allow_g']))
+        and (rating != 'PG' or bool(rules['allow_pg']))
+    )
+
+def get_sponsor_catalog(user_id, *, search='', availability='', min_points='',
+                        max_points='', sort='name'):
+    """Sponsor-only catalog: server-side keyword, stock, price filters and points sort."""
+
+    if availability not in ('', 'in_stock', 'out_of_stock'):
+        raise CatalogValidationError('Choose a valid availability filter.')
+
+    sort_clause = {
+        'name': 'product_name ASC, product_id ASC',
+        'points_asc': 'point_cost ASC, product_id ASC',
+        'points_desc': 'point_cost DESC, product_id ASC'
+    }.get(sort)
+
+    if not sort_clause:
+        raise CatalogValidationError('Choose a valid points sorting option.')
+
+    low = parse_points(min_points, optional=True)
+    high = parse_points(max_points, optional=True)
+
+    if low is not None and high is not None and low > high:
+        raise CatalogValidationError('Minimum points cannot exceed maximum points.')
+
     conn = get_db_connection()
+
     try:
         with conn.cursor() as cur:
             sponsor_id = sponsor_id_for_user(cur, user_id)
+
             if sponsor_id is None:
                 return []
 
-            cur.execute("""
+            query = """
                 SELECT product_id, product_name, point_cost, image_url,
-                       availability AS available
-                FROM ProductCatalog
-                WHERE sponsor_id = %s
-                ORDER BY product_name
-            """, (sponsor_id,))
+                       availability AS available, category, content_rating,
+                       auto_managed, catalog_enabled
+                FROM ProductCatalog WHERE sponsor_id = %s
+            """
+
+            params = [sponsor_id]
+
+            if search:
+                query += ' AND (product_name LIKE %s OR description LIKE %s)'
+                params.extend([like_pattern(search)] * 2)
+
+            if availability:
+                query += ' AND COALESCE(availability, FALSE) = %s'
+                params.append(availability == 'in_stock')
+
+            if low is not None:
+                query += ' AND point_cost >= %s'
+                params.append(low)
+
+            if high is not None:
+                query += ' AND point_cost <= %s'
+                params.append(high)
+
+            cur.execute(query + ' ORDER BY ' + sort_clause, params)
 
             return cur.fetchall()
+
     finally:
         conn.close()
 
@@ -275,6 +384,11 @@ def driver_catalog():
 
     # Keyword search over the driver's own sponsor's catalog (product name and description)
     search = request.args.get('search', '').strip()[:MAX_CATALOG_SEARCH_LENGTH]
+    
+    category = request.args.get('category', '').strip()
+    
+    if category and category not in CATEGORIES:
+        abort(400)
 
     conn = get_db_connection()
 
@@ -284,8 +398,18 @@ def driver_catalog():
             driver = get_catalog_driver(cur, g.user['user_id'])
 
             catalog = []
+            categories = []
 
             if can_view_catalog(driver):
+
+            cur.execute("""
+            SELECT DISTINCT category FROM ProductCatalog
+            WHERE sponsor_id = %s AND catalog_enabled = TRUE
+              AND content_rating IN ('G', 'PG')
+            ORDER BY category
+        """, (driver['sponsor_id'],))
+        
+        categories = [row['category'] for row in cur.fetchall()]
 
                 query = """
                     SELECT product_id,
@@ -293,11 +417,17 @@ def driver_catalog():
                            description,
                            point_cost,
                            image_url,
+                           category,
                            availability AS available
                     FROM ProductCatalog
-                    WHERE sponsor_id = %s
+                    WHERE sponsor_id = %s AND catalog_enabled = TRUE
+                      AND content_rating IN ('G', 'PG')
                 """
                 params = [driver['sponsor_id']]
+
+                if category:
+                    query += ' AND category = %s'
+                    params.append(category)
 
                 if search:
                     query += " AND (product_name LIKE %s OR description LIKE %s)"
@@ -315,8 +445,10 @@ def driver_catalog():
         driver=driver,
         catalog=catalog,
         search=search,
+        selected_category=category,
+        categories=categories,
         max_search_length=MAX_CATALOG_SEARCH_LENGTH
-    )
+)
 
 
 # Product Details: one product from the driver's own sponsor's catalog, with everything the
@@ -367,6 +499,7 @@ def add_to_cart(product_id):
                 SELECT product_name, availability AS available
                 FROM ProductCatalog
                 WHERE product_id = %s AND sponsor_id = %s
+                  AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
             """, (product_id, driver['sponsor_id']))
             product = cur.fetchone()
     finally:
@@ -424,6 +557,7 @@ def driver_cart():
                            availability AS available
                     FROM ProductCatalog
                     WHERE sponsor_id = %s AND product_id IN ({placeholders})
+                      AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
                 """, [driver['sponsor_id'], *cart])
                 found = {row['product_id']: row for row in cur.fetchall()}
                 items = [found[i] for i in cart if i in found]
@@ -626,7 +760,7 @@ GGDEALS_PRICES_URL = "https://api.gg.deals/v1/prices/by-slug/"
 
 POINTS_PER_USD = Decimal("100")
 
-MAX_REWARD_POINTS = 1000000
+MAX_REWARD_POINTS = CATALOG_MAX_POINTS
 
 
 class GameLookupError(ValueError):
@@ -925,29 +1059,33 @@ def add_ggdeals_reward():
 
     check_csrf()
 
+    # Sponsor attestation is required before calling the pricing API.
+    category = 'Games'
+    rating = request.form.get('content_rating', '').strip()
+    auto_managed = request.form.get('auto_managed') == 'on'
+    
     try:
-        slug = ggdeals_slug(
-            request.form.get("game_slug", "")
-        )
-
-        # Fetch the current price again
+        validate_rating_category(category, rating)
+    
+    except CatalogValidationError as exc:
+        flash(str(exc), 'error')
+        return redirect('/sponsor/games')
+    
+    try:
+        slug = ggdeals_slug(request.form.get('game_slug', ''))
+    
+        # Recheck current US retail price. GG.deals price data does NOT certify ratings.
         game = fetch_ggdeals_game(slug)
-
+    
         if not game:
-            raise GameLookupError(
-                "The selected game could not be found on GG.deals."
-            )
-
-        if game["point_cost"] is None:
-            raise GameLookupError(
-                "No positive US retail price is available for this game."
-            )
-
+            raise GameLookupError('The selected game could not be found on GG.deals.')
+    
+        if game['point_cost'] is None:
+            raise GameLookupError('No positive US retail price is available for this game.')
+    
     except GameLookupError as exc:
-
-        flash(str(exc), "error")
-
-        return redirect("/sponsor/games")
+        flash(str(exc), 'error')
+        return redirect('/sponsor/games')
 
     # Record when the price was retrieved
     checked_at = datetime.now(
@@ -975,29 +1113,28 @@ def add_ggdeals_reward():
             if sponsor_id is None:
                 abort(403)
 
+            rules = get_catalog_rules(cur, sponsor_id) if auto_managed else None
+
+            enabled = (
+                matches_catalog_rules(game['point_cost'], category, rating, rules)
+                if auto_managed else True
+            )
+            
             cur.execute("""
                 INSERT INTO ProductCatalog
-                    (
-                        sponsor_id,
-                        product_name,
-                        description,
-                        point_cost,
-                        availability,
-                        image_url
-                    )
-                VALUES (
-                    %s,
-                    %s,
-                    %s,
-                    %s,
-                    TRUE,
-                    NULL
-                )
+                    (sponsor_id, product_name, description, point_cost,
+                     availability, image_url, category, content_rating,
+                     auto_managed, catalog_enabled)
+                VALUES (%s, %s, %s, %s, TRUE, NULL, %s, %s, %s, %s)
             """, (
                 sponsor_id,
-                game["name"],
+                game['name'],
                 description,
-                game["point_cost"]
+                game['point_cost'],
+                category,
+                rating,
+                auto_managed,
+                enabled
             ))
 
         conn.commit()
@@ -1025,30 +1162,270 @@ def add_ggdeals_reward():
 def add_catalog_reward():
     require_role('Sponsor')
     check_csrf()
+
     name = request.form.get('product_name', '').strip()
-    raw_cost = request.form.get('point_cost', '').strip()
-    if not name or len(name) > 100 or not raw_cost.isdigit() or not 1 <= int(raw_cost) <= 1000000:
-        flash('Enter a product name (100 characters max) and a point cost from 1 to 1,000,000.', 'error')
+    category = request.form.get('category', '').strip()
+    rating = request.form.get('content_rating', '').strip()
+    auto_managed = request.form.get('auto_managed') == 'on'
+
+    try:
+        point_cost = parse_points(request.form.get('point_cost', ''))
+
+        if not name or len(name) > 100:
+            raise CatalogValidationError('Enter a product name (100 characters max).')
+
+        validate_rating_category(category, rating)
+
+    except CatalogValidationError as exc:
+        flash(str(exc), 'error')
         return redirect('/dashboard')
 
     conn = get_db_connection()
+
     try:
         with conn.cursor() as cur:
             sponsor_id = sponsor_id_for_user(cur, g.user['user_id'])
+
             if sponsor_id is None:
                 abort(403)
+
+            rules = get_catalog_rules(cur, sponsor_id) if auto_managed else None
+
+            enabled = (
+                matches_catalog_rules(point_cost, category, rating, rules)
+                if auto_managed else True
+            )
+
             cur.execute("""
-                INSERT INTO ProductCatalog (sponsor_id, product_name, point_cost, availability)
-                VALUES (%s, %s, %s, TRUE)
-            """, (sponsor_id, name, int(raw_cost)))
+                INSERT INTO ProductCatalog
+                    (sponsor_id, product_name, point_cost, availability,
+                     category, content_rating, auto_managed, catalog_enabled)
+                VALUES (%s, %s, %s, TRUE, %s, %s, %s, %s)
+            """, (
+                sponsor_id,
+                name,
+                point_cost,
+                category,
+                rating,
+                auto_managed,
+                enabled
+            ))
+
         conn.commit()
+
     except Exception:
         conn.rollback()
         raise
+
     finally:
         conn.close()
-    flash('Reward added to your catalog.', 'success')
+
+    flash(
+        'Reward added to your catalog.' +
+        (' Automatic rules currently hide it from drivers.' if not enabled else ''),
+        'success'
+    )
+
     return redirect('/dashboard')
+
+@rewards_bp.post('/sponsor/catalog/<int:product_id>/settings')
+@login_required
+def update_catalog_reward_settings(product_id):
+    """Classify legacy rewards and choose whether generation rules manage them."""
+
+    require_role('Sponsor')
+    check_csrf()
+
+    category = request.form.get('category', '').strip()
+    rating = request.form.get('content_rating', '').strip()
+    auto_managed = request.form.get('auto_managed') == 'on'
+
+    try:
+        # Sponsors may withdraw a prior G/PG attestation.
+        if rating == 'Unrated':
+            if category not in CATEGORIES:
+                raise CatalogValidationError('Select a valid reward category.')
+        else:
+            validate_rating_category(category, rating)
+
+    except CatalogValidationError as exc:
+        flash(str(exc), 'error')
+        return redirect('/dashboard')
+
+    conn = get_db_connection()
+
+    try:
+        conn.begin()
+
+        with conn.cursor() as cur:
+            sponsor_id = sponsor_id_for_user(cur, g.user['user_id'])
+
+            if sponsor_id is None:
+                abort(403)
+
+            cur.execute("""
+                SELECT point_cost FROM ProductCatalog
+                WHERE product_id = %s AND sponsor_id = %s FOR UPDATE
+            """, (product_id, sponsor_id))
+
+            product = cur.fetchone()
+
+            if product is None:
+                abort(404)
+
+            rules = get_catalog_rules(cur, sponsor_id) if auto_managed else None
+
+            enabled = (
+                matches_catalog_rules(product['point_cost'], category, rating, rules)
+                if auto_managed else True
+            )
+
+            cur.execute("""
+                UPDATE ProductCatalog SET category = %s, content_rating = %s,
+                    auto_managed = %s, catalog_enabled = %s
+                WHERE product_id = %s AND sponsor_id = %s
+            """, (
+                category,
+                rating,
+                auto_managed,
+                enabled,
+                product_id,
+                sponsor_id
+            ))
+
+        conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+    flash('Reward settings saved.', 'success')
+    return redirect('/dashboard')
+
+
+@rewards_bp.route('/sponsor/catalog/rules', methods=['GET', 'POST'])
+@login_required
+def sponsor_catalog_generation_rules():
+    """Configure sponsor-specific rules and regenerate all auto-managed offers."""
+
+    require_role('Sponsor')
+
+    if request.method == 'POST':
+        check_csrf()
+
+        selected = set(request.form.getlist('allowed_categories'))
+        allow_g = request.form.get('allow_g') == 'on'
+        allow_pg = request.form.get('allow_pg') == 'on'
+
+        try:
+            low = parse_points(request.form.get('min_points', ''))
+            high = parse_points(request.form.get('max_points', ''))
+
+            if low > high:
+                raise CatalogValidationError('Minimum points cannot exceed maximum points.')
+
+            if not selected or not selected.issubset(CATEGORIES):
+                raise CatalogValidationError('Choose at least one valid category.')
+
+            if not allow_g and not allow_pg:
+                raise CatalogValidationError('Allow at least one content rating (G or PG).')
+
+        except CatalogValidationError as exc:
+            flash(str(exc), 'error')
+            return redirect('/sponsor/catalog/rules')
+
+        allowed = ','.join(cat for cat in CATEGORIES if cat in selected)
+
+        conn = get_db_connection()
+
+        try:
+            conn.begin()
+
+            with conn.cursor() as cur:
+                sponsor_id = sponsor_id_for_user(cur, g.user['user_id'])
+
+                if sponsor_id is None:
+                    abort(403)
+
+                cur.execute("""
+                    INSERT INTO CatalogGenerationRules
+                        (sponsor_id, min_points, max_points, allowed_categories,
+                         allow_g, allow_pg)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        min_points = VALUES(min_points),
+                        max_points = VALUES(max_points),
+                        allowed_categories = VALUES(allowed_categories),
+                        allow_g = VALUES(allow_g),
+                        allow_pg = VALUES(allow_pg)
+                """, (
+                    sponsor_id,
+                    low,
+                    high,
+                    allowed,
+                    allow_g,
+                    allow_pg
+                ))
+
+                # Availability is stock status and is NEVER overwritten here.
+                # Only automatically managed products change rule-based visibility.
+                cur.execute("""
+                    UPDATE ProductCatalog
+                    SET catalog_enabled = CASE
+                        WHEN point_cost BETWEEN %s AND %s
+                          AND FIND_IN_SET(category, %s) > 0
+                          AND ((content_rating = 'G' AND %s)
+                               OR (content_rating = 'PG' AND %s))
+                        THEN TRUE ELSE FALSE END
+                    WHERE sponsor_id = %s AND auto_managed = TRUE
+                """, (
+                    low,
+                    high,
+                    allowed,
+                    allow_g,
+                    allow_pg,
+                    sponsor_id
+                ))
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+        finally:
+            conn.close()
+
+        flash(
+            'Catalog rules saved. Automatically managed rewards were regenerated.',
+            'success'
+        )
+
+        return redirect('/sponsor/catalog/rules')
+
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cur:
+            sponsor_id = sponsor_id_for_user(cur, g.user['user_id'])
+
+            if sponsor_id is None:
+                abort(403)
+
+            rules = get_catalog_rules(cur, sponsor_id)
+
+    finally:
+        conn.close()
+
+    return render_template(
+        'sponsor_catalog_rules.html',
+        rules=rules,
+        categories=CATEGORIES,
+        selected_categories=set(rules['allowed_categories'].split(','))
+    )
 
 
 @rewards_bp.post('/sponsor/catalog/<int:product_id>/availability')

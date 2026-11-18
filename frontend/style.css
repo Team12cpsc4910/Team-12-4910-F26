@@ -598,3 +598,60 @@ a:hover {
 .order-steps small {
   color: #94a3b8;
 }
+
+/* Sponsor and driver catalog browsing + rule forms */
+
+.catalog-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.catalog-filters label,
+.catalog-rules-form > label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.catalog-filters input,
+.catalog-filters select,
+.catalog-settings select,
+.catalog-rules-form input[type="number"] {
+    min-height: 35px;
+    max-width: 240px;
+    padding: 5px;
+}
+
+.catalog-settings {
+    display: grid;
+    gap: 6px;
+    min-width: 150px;
+}
+
+.catalog-settings label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.catalog-settings label:has(input[type="checkbox"]) {
+    flex-direction: row;
+}
+
+.catalog-rules-form {
+    display: grid;
+    gap: 15px;
+}
+
+.catalog-rules-form fieldset {
+    border: 1px solid #ccc;
+    padding: 12px;
+}
+
+.catalog-rules-form fieldset label {
+    display: inline-block;
+    padding: 6px;
+}
