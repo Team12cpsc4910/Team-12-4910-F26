@@ -2,19 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Driver Profile</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=11">
 </head>
-<body>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
   <div class="container">
-    <nav>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/sponsor/drivers">Drivers</a>
-      <a href="/sponsor/applications">Applications</a>
-      <a href="/sponsor/company">Company</a>
-      <a href="/profile">My Profile</a>
-      <a href="/logout">Log Out</a>
-    </nav>
     <main>
       <h1>{{ driver.first_name }} {{ driver.last_name }}</h1>
 

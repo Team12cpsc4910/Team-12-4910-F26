@@ -5,17 +5,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Profile</title>
-  <link rel="stylesheet" href="/style.css?v=5">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=11">
 </head>
 
-<body>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
 
   <div class="container">
 
-    <nav>
-      <a href="/dashboard">Back to Dashboard</a>
-      <a href="/logout">Log Out</a>
-    </nav>
 
     <main>
       {% if session.get('impersonator') %}

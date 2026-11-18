@@ -13,9 +13,9 @@
   ] %}
 {% elif role == 'Sponsor' %}
   {% set nav_links = [
-    ('/dashboard', 'Dashboard', 'home', ['/dashboard']),
-    ('/sponsor/drivers', 'Drivers', 'users', ['/sponsor/drivers', '/sponsor/driver']),
-    ('/sponsor/applications', 'Applications', 'file', ['/sponsor/applications', '/sponsor/application']),
+    ('/dashboard', 'Dashboard', 'home', ['/dashboard', '/sponsor/catalog', '/sponsor/games']),
+    ('/sponsor/drivers', 'Drivers', 'users', ['/sponsor/drivers']),
+    ('/sponsor/applications', 'Applications', 'file', ['/sponsor/applications']),
     ('/sponsor/redemptions', 'Reward Orders', 'package', ['/sponsor/redemptions']),
     ('/sponsor/company', 'Company', 'building', ['/sponsor/company']),
   ] %}
