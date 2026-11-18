@@ -138,27 +138,27 @@ def dashboard():
     elif user_type == "Sponsor":
         catalog_filters = {key: request.args.get(key, '') for key in
                            ('search', 'availability', 'min_points', 'max_points', 'sort')}
-    try:
-        catalog = get_sponsor_catalog(
-            session.get('user_id'),
-            search=catalog_filters['search'].strip()[:100],
-            availability=catalog_filters['availability'],
-            min_points=catalog_filters['min_points'],
-            max_points=catalog_filters['max_points'],
-            sort=catalog_filters['sort'] or 'name'
-        )
-        catalog_error = None
-    except CatalogValidationError as exc:
-        catalog = []
-        catalog_error = str(exc)
+        try:
+            catalog = get_sponsor_catalog(
+                session.get('user_id'),
+                search=catalog_filters['search'].strip()[:100],
+                availability=catalog_filters['availability'],
+                min_points=catalog_filters['min_points'],
+                max_points=catalog_filters['max_points'],
+                sort=catalog_filters['sort'] or 'name'
+            )
+            catalog_error = None
+        except CatalogValidationError as exc:
+            catalog = []
+            catalog_error = str(exc)
 
-    return render_template(
-        'sponsor_dashboard.html',
-        report=get_sponsor_point_report(current_user),
-        catalog=catalog,
-        catalog_filters=catalog_filters,
-        catalog_error=catalog_error,
-    )
+        return render_template(
+            'sponsor_dashboard.html',
+            report=get_sponsor_point_report(current_user),
+            catalog=catalog,
+            catalog_filters=catalog_filters,
+            catalog_error=catalog_error,
+        )
         
     elif user_type == "Driver":
         points = 0
