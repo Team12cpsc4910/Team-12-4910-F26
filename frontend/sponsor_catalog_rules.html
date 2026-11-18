@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Catalog Generation Rules - Sponsor</title>
+    <link rel="stylesheet" href="/style.css?v=7">
+</head>
+<body>
+<div class="container">
+    <nav><a href="/dashboard">Back to Sponsor Dashboard</a> <a href="/logout">Log Out</a></nav>
+    <main>
+        <h1>Automatic Catalog Generation Rules</h1>
+        <p>Rules decide whether <strong>automatically managed</strong> rewards appear in your drivers' catalog.
+           Saving rules updates existing auto-managed rewards immediately. Stock availability is not changed.</p>
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <p role="status">{{ message }}</p>
+        {% endfor %}
+        <form method="POST" action="/sponsor/catalog/rules" class="catalog-rules-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Minimum point price
+                <input name="min_points" type="number" min="1" max="1000000" value="{{ rules.min_points }}" required>
+            </label>
+            <label>Maximum point price
+                <input name="max_points" type="number" min="1" max="1000000" value="{{ rules.max_points }}" required>
+            </label>
+            <fieldset>
+                <legend>Categories to offer automatically</legend>
+                {% for choice in categories %}
+                <label><input type="checkbox" name="allowed_categories" value="{{ choice }}"
+                       {{ 'checked' if choice in selected_categories else '' }}> {{ choice }}</label>
+                {% endfor %}
+            </fieldset>
+            <fieldset>
+                <legend>Allowed G/PG ratings</legend>
+                <label><input type="checkbox" name="allow_g" {{ 'checked' if rules.allow_g else '' }}> G</label>
+                <label><input type="checkbox" name="allow_pg" {{ 'checked' if rules.allow_pg else '' }}> PG</label>
+            </fieldset>
+            <button type="submit">Save and regenerate catalog</button>
+        </form>
+        <p>Rewards without a sponsor-confirmed G or PG rating are always hidden from drivers.
+           These settings do not independently verify content ratings.</p>
+    </main>
+</div>
+</body>
+</html>
