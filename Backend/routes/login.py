@@ -2,6 +2,7 @@ import csv
 import io
 
 from flask import Blueprint, request, render_template, session, redirect, g, Response
+from markupsafe import escape
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
@@ -10,11 +11,29 @@ from routes.admin import change_own_password, AdminError, csv_safe
 
 auth_bp = Blueprint('auth', __name__)
 
+# index.html stays plain HTML because Amplify serves it as-is (no Jinja), so a failed login
+# re-shows the page with the error placed where this HTML comment sits in the login card.
+LOGIN_ERROR_MARKER = '<!-- login-error -->'
+
+
+def login_page_with_error(message, username=''):
+    page = render_template('index.html')
+    page = page.replace(LOGIN_ERROR_MARKER,
+                        f'<p class="auth-error" role="alert">{escape(message)}</p>', 1)
+    # Keep what they typed so only the password needs re-entering
+    if username:
+        page = page.replace('name="username"',
+                            f'name="username" value="{escape(username[:50])}"', 1)
+    return page
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
+    username = (request.form.get('username') or '').strip()
+    password = request.form.get('password') or ''
+
+    if not username or not password:
+        return login_page_with_error('Enter your username and password.', username)
 
     if username == "admin" and password == "test":
         session['username'] = username
@@ -49,7 +68,8 @@ def login():
     if user and check_password_hash(user['password_hash'], password):
         # Checked after the password so a wrong guess can't reveal which accounts are deactivated
         if user['account_locked']:
-            return "This account has been deactivated or locked. Please contact your sponsor or an administrator."
+            return login_page_with_error('This account has been deactivated or locked. '
+                                         'Please contact your sponsor or an administrator.', username)
 
         session['user_id'] = user['user_id']
         session['username'] = user['username']
@@ -57,7 +77,7 @@ def login():
 
         return redirect('/dashboard')
 
-    return "Invalid username or password. Please press back and try again."
+    return login_page_with_error('Invalid username or password. Please try again.', username)
 
 
 def get_sponsor_point_report(username):

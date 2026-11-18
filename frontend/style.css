@@ -854,6 +854,36 @@ a:hover {
   color: #94a3b8;
 }
 
+.auth-error {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+  font-weight: 500;
+  font-size: 0.95em;
+}
+
+.auth-error::before {
+  content: "!";
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: #f87171;
+  color: #0b1220;
+  font-weight: 800;
+  font-size: 0.8em;
+}
+
 .auth-form button {
   margin-top: 4px;
   text-transform: none;
