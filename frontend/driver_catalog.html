@@ -71,26 +71,25 @@
                 {{ driver.points }} Points
             </p>
 
-            <!-- Keyword Search -->
-
-            <form method="GET" action="/driver/catalog" class="catalog-search" role="search">
-                <label for="catalog-search-input" class="visually-hidden">Search rewards</label>
-                <input type="search"
-                       id="catalog-search-input"
-                       name="search"
-                       value="{{ search }}"
-                       maxlength="{{ max_search_length }}"
-                       placeholder="Search rewards by keyword">
-                <button type="submit">Search</button>
-            </form>
-
-            {% if search %}
-            <p>
-                {{ catalog | length }} result{{ '' if catalog | length == 1 else 's' }}
-                for &ldquo;{{ search }}&rdquo;.
-                <a href="/driver/catalog">Clear search</a>
-            </p>
-            {% endif %}
+<!-- Keyword search and category browsing: always scoped to this driver's sponsor -->
+<form method="GET" action="/driver/catalog" class="catalog-filters" role="search">
+    <label for="catalog-search-input">Search rewards
+        <input type="search" id="catalog-search-input" name="search"
+               value="{{ search }}" maxlength="{{ max_search_length }}"
+               placeholder="Search rewards by keyword">
+    </label>
+    <label for="driver-category">Browse category
+        <select id="driver-category" name="category">
+            <option value="">All categories</option>
+            {% for choice in categories %}
+            <option value="{{ choice }}" {{ 'selected' if selected_category == choice else '' }}>{{ choice }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button type="submit">Browse Rewards</button>
+    <a href="/driver/catalog">Clear filters</a>
+</form>
+<p>{{ catalog | length }} reward{{ '' if catalog | length == 1 else 's' }} shown.</p>
 
             <!-- Product Catalog -->
 
@@ -136,7 +135,8 @@
                                 <strong>
                                     <a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a>
                                 </strong>
-
+                                
+                                <br><small>Category: {{ item.category }}</small>
                                 {% if item.description %}
 
                                     <br>
@@ -220,8 +220,8 @@
 
                         <tr>
                             <td colspan="4" class="catalog-empty">
-                                {% if search %}
-                                No rewards match &ldquo;{{ search }}&rdquo;.
+                                {% if search or selected_category %}
+                                No rewards match these filters.
                                 {% else %}
                                 Your sponsor hasn't added
                                 any rewards yet.
