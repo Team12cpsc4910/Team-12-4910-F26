@@ -135,9 +135,9 @@ def dashboard():
     if user_type == "Admin":
         return render_template('admin_dashboard.html')
 
-elif user_type == "Sponsor":
-    catalog_filters = {key: request.args.get(key, '') for key in
-                       ('search', 'availability', 'min_points', 'max_points', 'sort')}
+    elif user_type == "Sponsor":
+        catalog_filters = {key: request.args.get(key, '') for key in
+                           ('search', 'availability', 'min_points', 'max_points', 'sort')}
     try:
         catalog = get_sponsor_catalog(
             session.get('user_id'),
