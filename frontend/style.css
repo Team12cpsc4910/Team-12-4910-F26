@@ -2118,3 +2118,270 @@ button.button-small:disabled {
     flex: 1;
   }
 }
+
+/* ===== Reward details page (driver_product.html) ===== */
+/* Overrides the site-wide nav bar styles */
+nav.breadcrumb {
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+nav.breadcrumb a {
+  padding: 0;
+  font-size: 1em;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #94a3b8;
+}
+
+nav.breadcrumb a:hover {
+  color: #00e676;
+  background: none;
+}
+
+.breadcrumb ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  font-size: 0.88em;
+  color: #94a3b8;
+}
+
+.breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.breadcrumb li[aria-current="page"] span {
+  color: #e2e8f0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 50vw;
+}
+
+.product-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.detail-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b1220;
+}
+
+.detail-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail-media.is-unavailable img,
+.detail-media.is-unavailable .product-placeholder {
+  filter: grayscale(0.8);
+  opacity: 0.7;
+}
+
+.detail-media .product-flag {
+  top: 16px;
+  left: 16px;
+  font-size: 0.85em;
+}
+
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-info h1 {
+  margin: 0;
+  text-align: left;
+  text-shadow: none;
+  font-size: 2em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.detail-sponsor {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.detail-sponsor strong {
+  color: #e2e8f0;
+}
+
+.detail-price {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0;
+  color: #94a3b8;
+  font-size: 1.05em;
+}
+
+.detail-price strong {
+  color: #ffffff;
+  font-size: 2.1em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.balance-box div:not(.progress) {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #94a3b8;
+}
+
+.balance-box strong {
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance-box .afford {
+  margin: 4px 0 0;
+  font-size: 0.9em;
+}
+
+.balance-box .progress {
+  margin: 4px 0 0;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.detail-actions form {
+  margin: 0;
+}
+
+.detail-actions button,
+.detail-actions .button-link,
+.detail-actions .button-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 1em;
+}
+
+.detail-actions button:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Outlined button for the second choice next to a main button */
+button.button-secondary {
+  color: #e2e8f0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+button.button-secondary:hover {
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.06);
+  border-color: rgba(0, 230, 118, 0.5);
+  box-shadow: none;
+}
+
+.button-ghost.button-large {
+  padding: 14px;
+  font-size: 1em;
+}
+
+.detail-notes {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 0.88em;
+}
+
+.detail-notes li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.detail-notes .icon {
+  margin-top: 3px;
+  color: #64748b;
+}
+
+.detail-description p {
+  margin: 0;
+  color: #cbd5e1;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .product-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .detail-media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .detail-info h1 {
+    font-size: 1.6em;
+  }
+}

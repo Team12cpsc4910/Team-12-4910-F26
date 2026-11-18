@@ -762,15 +762,18 @@ def render_driver_reward(product_id, template):
             if not can_view_catalog(driver):
                 return redirect('/driver/catalog')
 
+            # Same visibility rules as the catalog list, so a hidden reward can't be opened by URL
             cur.execute("""
                 SELECT product_id,
                        product_name,
                        description,
                        point_cost,
                        image_url,
+                       category,
                        availability AS available
                 FROM ProductCatalog
                 WHERE product_id = %s AND sponsor_id = %s
+                  AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
             """, (product_id, driver['sponsor_id']))
             product = cur.fetchone()
     finally:
@@ -778,7 +781,7 @@ def render_driver_reward(product_id, template):
 
     if not product:
         abort(404)
-    return render_template(template, driver=driver, item=product)
+    return render_template(template, driver=driver, item=product, in_cart=product_id in cart_ids())
 
 # GG.deals API configuration
 
