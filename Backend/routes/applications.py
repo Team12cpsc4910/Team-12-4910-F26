@@ -293,7 +293,10 @@ def get_sponsor_application(username, app_id):
                 return None
             cur.execute("""
                 SELECT a.app_id, a.app, a.state, d.first_name, d.last_name, u.email,
-                       (SELECT MIN(l.datetime) FROM DriverAppLog l WHERE l.app_id = a.app_id) AS submitted
+                       (SELECT MIN(l.datetime) FROM DriverAppLog l WHERE l.app_id = a.app_id) AS submitted,
+                       (SELECT MAX(l.datetime) FROM DriverAppLog l WHERE l.app_id = a.app_id) AS decided,
+                       (SELECT l.reason FROM DriverAppLog l WHERE l.app_id = a.app_id
+                        ORDER BY l.app_log_id DESC LIMIT 1) AS decision_reason
                 FROM DriverApp a
                 JOIN DriverUser d ON a.driver_id = d.driver_id
                 JOIN UserAccount u ON d.user_id = u.user_id

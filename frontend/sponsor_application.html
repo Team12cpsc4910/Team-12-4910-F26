@@ -7,88 +7,134 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=22">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>Driver Application</h1>
+{% macro when(value) -%}
+  {% if value and value.strftime is defined %}{{ value.strftime('%b %d, %Y at %I:%M %p') }}{% else %}{{ value or '—' }}{% endif %}
+{%- endmacro %}
 
-      {% if error %}
-        <p class="error-message">{{ error }}</p>
-      {% endif %}
+{% set name = (application.first_name ~ ' ' ~ application.last_name) | trim %}
+{% set state = application.state | lower %}
 
-      <dl>
-        <dt>Driver</dt>
-        <dd>{{ application.first_name }} {{ application.last_name }}</dd>
+<div class="page">
+  <main>
 
-        <dt>Email</dt>
-        <dd>{{ application.email }}</dd>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/sponsor/applications">Applications</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>{{ name }}</span></li>
+      </ol>
+    </nav>
 
-        <dt>Submitted</dt>
-        <dd>{{ application.submitted or '—' }}</dd>
+    <section class="page-heading">
+      <div class="heading-with-avatar">
+        <span class="app-icon avatar-initials avatar-md{{ ' is-approved' if state == 'approved' else (' is-rejected' if state == 'rejected' else '') }}" aria-hidden="true">
+          {{ ((application.first_name or '?')[0] ~ (application.last_name or '')[:1]) | upper }}
+        </span>
+        <div>
+          <h1 class="order-title">{{ name }} <span class="status {{ state }}">{{ application.state | capitalize }}</span></h1>
+          <p>Applied {{ when(application.submitted) }}</p>
+        </div>
+      </div>
+    </section>
 
-        <dt>Status</dt>
-        <dd><span class="status {{ application.state | lower }}">{{ application.state | capitalize }}</span></dd>
-      </dl>
+    {% if error %}
+      <div class="notice notice-error notice-with-icon" role="alert">{{ icon('info', 18) }}<span>{{ error }}</span></div>
+    {% endif %}
 
-      <h2>Why they want to join</h2>
-      <p class="application-message">{{ application.app }}</p>
+    <div class="form-layout">
 
-      {% if application.state | lower == 'pending' %}
-      <form action="/sponsor/applications/{{ application.app_id }}/approve" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit">Approve Application</button>
-      </form>
-      <form action="/sponsor/applications/{{ application.app_id }}/reject" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label for="reason">Reason for rejection</label>
-        <textarea id="reason" name="reason" maxlength="255" required>{{ reason or '' }}</textarea>
-        <button type="submit">Reject Application</button>
-      </form>
-      {% endif %}
+      <!-- What the driver sent -->
+      <div class="order-main">
+        <section class="panel" aria-labelledby="message-title">
+          <div class="panel-heading">
+            <h2 id="message-title">{{ icon('file', 20) }} Why they want to join</h2>
+          </div>
+          <blockquote class="application-quote">{{ application.app }}</blockquote>
+        </section>
 
-      <p style="text-align: center;"><a href="/sponsor/applications">Back to Applications</a></p>
+        <section class="panel" aria-labelledby="driver-title">
+          <div class="panel-heading">
+            <h2 id="driver-title">{{ icon('user', 20) }} Driver details</h2>
+          </div>
+          <dl class="detail-list">
+            <div><dt>Name</dt><dd>{{ name }}</dd></div>
+            <div><dt>Email</dt><dd>{% if application.email %}<a href="mailto:{{ application.email }}">{{ application.email }}</a>{% else %}—{% endif %}</dd></div>
+            <div><dt>Applied</dt><dd>{{ when(application.submitted) }}</dd></div>
+          </dl>
+        </section>
+      </div>
 
-      <h2>Reviewed Applications</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Driver</th>
-            <th>Reviewed</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if reviewed %}
-            {% for app in reviewed %}
-            <tr>
-              <td>{{ app.first_name }} {{ app.last_name }}</td>
-              <td>{{ app.decided or '—' }}</td>
-              <td>
-                <span class="status {{ app.state | lower }}">
-                  {{ app.state | capitalize }}
-                </span>
-              </td>
-              <td>
-                <a href="/sponsor/applications/{{ app.app_id }}">View</a>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">
-                No reviewed applications yet.
-              </td>
-            </tr>
+      <!-- Decision -->
+      <aside class="panel form-aside decision-panel" aria-labelledby="decision-title">
+        <h2 id="decision-title">Decision</h2>
+
+        {% if state == 'pending' %}
+
+          <form action="/sponsor/applications/{{ application.app_id }}/approve" method="POST"
+                onsubmit="return confirm('Approve this driver? They will join your program and can start earning points.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="button-full">{{ icon('check', 18) }} Approve</button>
+          </form>
+          <p class="field-hint">Approving adds the driver to your program and opens your rewards catalog to them.</p>
+
+          <div class="or-divider"><span>or</span></div>
+
+          <form action="/sponsor/applications/{{ application.app_id }}/reject" method="POST" class="reject-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+              <label for="reason">Reason for rejecting</label>
+              <textarea id="reason" name="reason" rows="4" maxlength="255" required
+                        aria-describedby="reason-hint reason-count"
+                        placeholder="Let the driver know why, so they can apply again later.">{{ reason or '' }}</textarea>
+              <div class="field-footer">
+                <span id="reason-hint" class="field-hint">The driver will see this.</span>
+                <span id="reason-count" class="char-count" aria-live="polite">{{ (reason or '') | length }} / 255</span>
+              </div>
+            </div>
+            <button type="submit" class="button-danger-outline">Reject application</button>
+          </form>
+
+          <script>
+            (function () {
+              var box = document.getElementById('reason');
+              var count = document.getElementById('reason-count');
+              box.addEventListener('input', function () {
+                count.textContent = box.value.length + ' / ' + box.maxLength;
+                count.classList.toggle('is-near-limit', box.value.length > box.maxLength - 25);
+              });
+            })();
+          </script>
+
+        {% else %}
+
+          <div class="decision-result {{ 'is-approved' if state == 'approved' else 'is-rejected' }}">
+            {{ icon('badge-check' if state == 'approved' else 'info', 22) }}
+            <div>
+              <strong>{{ application.state | capitalize }}</strong>
+              <small>{{ when(application.decided) }}</small>
+            </div>
+          </div>
+          {% if state == 'rejected' and application.decision_reason %}
+            <p class="app-reason"><span>Reason:</span> {{ application.decision_reason }}</p>
           {% endif %}
-        </tbody>
-      </table>
-    </main>
-  </div>
+          {% if state == 'approved' %}
+            <a href="/sponsor/drivers" class="back-link">{{ icon('users', 16) }} View your drivers</a>
+          {% endif %}
+
+        {% endif %}
+      </aside>
+
+    </div>
+
+    <p><a href="/sponsor/applications" class="back-link">{{ icon('arrow-left', 16) }} Back to applications</a></p>
+
+  </main>
+</div>
 </body>
 </html>

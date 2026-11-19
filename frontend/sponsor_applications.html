@@ -7,105 +7,103 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=22">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1 style="text-align: center;">Driver Applications</h1>
-      <p style="text-align: center;">Review drivers who have applied to join your incentive program.</p>
+{% macro day(value) -%}
+  {% if value and value.strftime is defined %}{{ value.strftime('%b %d, %Y') }}{% else %}{{ value or '—' }}{% endif %}
+{%- endmacro %}
+{% macro initials(app) -%}
+  {{ ((app.first_name or '?')[0] ~ (app.last_name or '')[:1]) | upper }}
+{%- endmacro %}
 
-      {% if approved %}
-        <p class="success-message">Application approved. The driver has been added to your program.</p>
-      {% endif %}
+<div class="page">
+  <main>
 
-      {% if rejected %}
-        <p class="success-message">Application rejected. The driver can see your reason.</p>
-      {% endif %}
+    <section class="page-heading">
+      <div>
+        <h1>Driver applications</h1>
+        <p>Review drivers who have applied to join your incentive program.</p>
+      </div>
+    </section>
 
-      <h2>Pending Applications</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Driver</th>
-            <th>Submitted</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if pending %}
+    {% if approved %}
+      <div class="notice notice-success notice-with-icon" role="status">
+        {{ icon('check', 18) }}<span>Application approved. The driver has been added to your program.</span>
+        <a href="/sponsor/drivers" class="notice-action">View drivers {{ icon('arrow-right', 16) }}</a>
+      </div>
+    {% endif %}
+    {% if rejected %}
+      <div class="notice notice-success notice-with-icon" role="status">
+        {{ icon('check', 18) }}<span>Application rejected. The driver can see your reason.</span>
+      </div>
+    {% endif %}
+
+    <div class="app-sections">
+
+      <!-- Waiting on a decision -->
+      <section class="panel" aria-labelledby="pending-title">
+        <div class="panel-heading">
+          <h2 id="pending-title">Waiting for review <span class="count-pill{{ ' count-pill-alert' if pending }}">{{ pending | length }}</span></h2>
+        </div>
+        {% if pending %}
+          <ul class="app-list">
             {% for app in pending %}
-            <tr>
-              <td>{{ app.first_name }} {{ app.last_name }}</td>
-              <td>{{ app.submitted or '—' }}</td>
-              <td><span class="status pending">{{ app.state | capitalize }}</span></td>
-              <td><a href="/sponsor/applications/{{ app.app_id }}">View</a></td>
-            </tr>
+            <li>
+              <span class="app-icon avatar-initials" aria-hidden="true">{{ initials(app) }}</span>
+              <div class="app-info">
+                <strong>{{ app.first_name }} {{ app.last_name }}</strong>
+                <small>Applied {{ day(app.submitted) }}</small>
+              </div>
+              <div class="app-side app-side-row">
+                <span class="status pending">{{ app.state | capitalize }}</span>
+                <a href="/sponsor/applications/{{ app.app_id }}" class="button-link button-inline button-compact">
+                  Review {{ icon('arrow-right', 16) }}
+                </a>
+              </div>
+            </li>
             {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No drivers have applied to your program yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-      <h2>Reviewed Applications</h2>
-      <p>
-          Approved and rejected applications appear here.
-      </p>
-      
-      <table class="catalog-table">
-          <thead>
-              <tr>
-                  <th>Driver</th>
-                  <th>Reviewed</th>
-                  <th>Status</th>
-                  <th>Action</th>
-              </tr>
-          </thead>
-      
-          <tbody>
-              {% if reviewed %}
-      
-                  {% for app in reviewed %}
-                  <tr>
-                      <td>
-                          {{ app.first_name }}
-                          {{ app.last_name }}
-                      </td>
-      
-                      <td>{{ app.decided or '—' }}</td>
-      
-                      <td>
-                          <span class="status {{ app.state | lower }}">
-                              {{ app.state | capitalize }}
-                          </span>
-                      </td>
-      
-                      <td>
-                          <a href="/sponsor/applications/{{ app.app_id }}">
-                              View
-                          </a>
-                      </td>
-                  </tr>
-                  {% endfor %}
-      
-              {% else %}
-      
-                  <tr>
-                      <td colspan="4">
-                          No reviewed applications yet.
-                      </td>
-                  </tr>
-      
-              {% endif %}
-          </tbody>
-      </table>
-    </main>
-  </div>
+          </ul>
+        {% else %}
+          <p class="empty-state">You're all caught up. No drivers are waiting for a decision.</p>
+        {% endif %}
+      </section>
+
+      <!-- Already decided -->
+      <section class="panel" aria-labelledby="reviewed-title">
+        <div class="panel-heading">
+          <h2 id="reviewed-title">Reviewed <span class="count-pill">{{ reviewed | length }}</span></h2>
+          <span class="panel-meta">Most recent 50</span>
+        </div>
+        {% if reviewed %}
+          <ul class="app-list">
+            {% for app in reviewed %}
+            {% set state = app.state | lower %}
+            <li>
+              <span class="app-icon avatar-initials {{ 'is-approved' if state == 'approved' else 'is-rejected' }}" aria-hidden="true">{{ initials(app) }}</span>
+              <div class="app-info">
+                <strong>{{ app.first_name }} {{ app.last_name }}</strong>
+                <small>{{ state | capitalize }} {{ day(app.decided) }}</small>
+              </div>
+              <div class="app-side app-side-row">
+                <span class="status {{ state }}">{{ app.state | capitalize }}</span>
+                <a href="/sponsor/applications/{{ app.app_id }}" class="text-link">View</a>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty-state">Approved and rejected applications will appear here.</p>
+        {% endif %}
+      </section>
+
+    </div>
+
+  </main>
+</div>
 </body>
 </html>

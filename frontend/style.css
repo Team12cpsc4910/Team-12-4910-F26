@@ -3724,3 +3724,197 @@ button.link-button.link-danger {
     flex: 1 1 40%;
   }
 }
+
+/* ===== Sponsor applications (sponsor_applications.html, sponsor_application.html) ===== */
+.count-pill-alert {
+  background: rgba(251, 191, 36, 0.18);
+  color: #fbbf24;
+}
+
+.avatar-initials {
+  font-size: 0.9em;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.app-list .app-side-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.button-link.button-compact {
+  padding: 8px 14px;
+  font-size: 0.88em;
+  gap: 6px;
+}
+
+.heading-with-avatar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-icon.avatar-md {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  font-size: 1.15em;
+}
+
+.application-quote {
+  margin: 0;
+  padding: 16px 18px;
+  border-left: 3px solid #00e676;
+  border-radius: 0 12px 12px 0;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+  font-size: 1.02em;
+  line-height: 1.7;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.detail-list {
+  margin: 0;
+}
+
+.detail-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.detail-list div:last-child {
+  border-bottom: 0;
+}
+
+.detail-list dt {
+  margin: 0;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.detail-list dd {
+  margin: 0;
+  color: #f1f5f9;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.decision-panel form {
+  margin: 0;
+}
+
+.decision-panel .field-hint {
+  margin-top: 8px;
+}
+
+.decision-panel .field-footer .field-hint {
+  margin: 0;
+}
+
+button.button-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 1em;
+}
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: #64748b;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reject-form .form-group {
+  margin-bottom: 14px;
+}
+
+.reject-form textarea {
+  min-height: 96px;
+}
+
+/* Outlined red button for a negative decision */
+button.button-danger-outline {
+  width: 100%;
+  margin: 0;
+  color: #fca5a5;
+  background: transparent;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 1em;
+}
+
+button.button-danger-outline:hover {
+  color: #ffffff;
+  background: rgba(220, 38, 38, 0.8);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.decision-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.decision-result strong {
+  display: block;
+  color: #ffffff;
+}
+
+.decision-result small {
+  color: #94a3b8;
+}
+
+.decision-result.is-approved {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.decision-result.is-rejected {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.decision-panel .back-link {
+  margin-top: 14px;
+}
+
+@media (max-width: 520px) {
+  .heading-with-avatar {
+    align-items: flex-start;
+  }
+
+  .app-icon.avatar-md {
+    width: 44px;
+    height: 44px;
+  }
+}
