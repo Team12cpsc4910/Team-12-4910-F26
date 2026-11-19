@@ -81,7 +81,10 @@
             <span>{{ role }} account</span>
           </div>
           <a href="/profile">{{ icon('user', 18) }}My Profile</a>
+          {# An admin viewing as a driver can't change that driver's password #}
+          {% if not session.get('impersonator') %}
           <a href="{{ '/admin/password' if role == 'Admin' else '/password' }}">{{ icon('lock', 18) }}Change Password</a>
+          {% endif %}
           <a href="/logout" class="user-menu-logout">{{ icon('logout', 18) }}Log Out</a>
         </div>
       </details>

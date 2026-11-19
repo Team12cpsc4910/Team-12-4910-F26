@@ -3048,3 +3048,340 @@ button.link-button:hover {
     gap: 12px;
   }
 }
+
+/* ===== Shared form pages (application form, profile, change password) ===== */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.form-card .form-group:last-of-type {
+  margin-bottom: 8px;
+}
+
+.form-card .notice {
+  margin-bottom: 20px;
+}
+
+.form-card .form-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+.field-footer .field-hint {
+  margin: 0;
+}
+
+.field-hint.is-valid {
+  color: #4ade80;
+}
+
+.field-hint.is-invalid {
+  color: #fbbf24;
+}
+
+.char-count {
+  flex: none;
+  color: #64748b;
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.is-near-limit {
+  color: #fbbf24;
+}
+
+/* Main button plus a quiet Cancel link */
+.form-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 24px;
+}
+
+.form-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  margin: 0;
+  padding: 12px 22px;
+  text-transform: none;
+  letter-spacing: 0.2px;
+  font-size: 1em;
+}
+
+.button-cancel {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.button-cancel:hover {
+  color: #e2e8f0;
+}
+
+.form-aside h2,
+.form-card h2 {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  font-size: 1.05em;
+  text-align: left;
+}
+
+.form-card .panel-heading h2 {
+  margin: 0;
+}
+
+.form-aside .detail-notes {
+  margin: 0;
+}
+
+/* Numbered "what happens next" list */
+.next-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.next-steps li {
+  display: flex;
+  gap: 12px;
+}
+
+.next-steps li > span {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 230, 118, 0.12);
+  color: #00e676;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.next-steps strong {
+  display: block;
+  color: #ffffff;
+  font-size: 0.95em;
+}
+
+.next-steps small {
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+/* Password fields with a show/hide button inside */
+.input-with-toggle {
+  position: relative;
+}
+
+.form-group .input-with-toggle input {
+  padding-right: 48px;
+}
+
+button.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: #94a3b8;
+  transform: translateY(-50%);
+}
+
+button.password-toggle:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+
+.password-toggle .when-shown,
+.password-toggle[aria-pressed="true"] .when-hidden {
+  display: none;
+}
+
+.password-toggle[aria-pressed="true"] .when-shown {
+  display: inline-flex;
+}
+
+.form-card .password-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  color: #94a3b8;
+}
+
+.form-card .password-reqs li {
+  margin: 0;
+}
+
+.form-card .password-reqs li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #475569;
+}
+
+.form-card .password-reqs li.valid {
+  color: #4ade80;
+}
+
+.form-card .password-reqs li.valid::before {
+  content: "";
+  background: #4ade80;
+}
+
+/* Profile page */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.avatar-lg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00e676, #00b0ff);
+  color: #0f172a;
+  font-size: 2em;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.profile-card h2 {
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  font-size: 1.25em;
+  overflow-wrap: anywhere;
+}
+
+.profile-username {
+  margin: 2px 0 10px;
+  color: #94a3b8;
+}
+
+.role-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.1);
+  color: #7dd3fc;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.profile-card dl {
+  width: 100%;
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+
+.profile-card dl div {
+  padding: 8px 0;
+}
+
+.profile-card dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+.profile-card dd {
+  margin: 2px 0 0;
+  color: #f1f5f9;
+  overflow-wrap: anywhere;
+}
+
+/* A setting with its description on the left and an action on the right */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.settings-row strong {
+  display: block;
+  color: #ffffff;
+}
+
+.settings-row small {
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .form-layout,
+  .profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .form-card .form-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

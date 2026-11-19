@@ -8,104 +8,143 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=20">
 </head>
 
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
+{% set full_name = ((user.first_name or '') ~ ' ' ~ (user.last_name or '')) | trim if user else '' %}
+{% set initials = ((user.first_name or ' ')[0] ~ (user.last_name or ' ')[0]) | trim | upper if user else '' %}
+{% if user and user.user_type == 'Admin' %}
+  {% set password_url = '/admin/password' %}
+{% elif user and user.user_type in ('Sponsor', 'Driver') and session.get('user_id') and not session.get('impersonator') %}
+  {% set password_url = '/password' %}
+{% else %}
+  {% set password_url = '' %}
+{% endif %}
 
-  <div class="container">
+<div class="page">
+  <main>
 
+    {% if session.get('impersonator') %}
+      <div class="notice notice-info">
+        <span>Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).</span>
+        <form action="/admin/stop-assuming" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button-small">Return to Admin</button>
+        </form>
+      </div>
+    {% endif %}
 
-    <main>
-      {% if session.get('impersonator') %}
-        <div class="success-message" style="text-align: center;">
-          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
-          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
+    <section class="page-heading">
+      <div>
+        <h1>My profile</h1>
+        <p>Manage your name, email address, and password.</p>
+      </div>
+    </section>
+
+    {% if saved %}
+      <div class="notice notice-success notice-with-icon" role="status">{{ icon('check', 18) }}<span>Your profile has been saved.</span></div>
+    {% endif %}
+    {% if password_changed %}
+      <div class="notice notice-success notice-with-icon" role="status">{{ icon('check', 18) }}<span>Your password has been changed.</span></div>
+    {% endif %}
+
+    {% if not user %}
+
+      <p class="empty-state">Profile details aren't available for this account.</p>
+
+    {% else %}
+
+    <div class="profile-layout">
+
+      <!-- Who this account is -->
+      <aside class="panel profile-card" aria-label="Account summary">
+        <span class="avatar-lg" aria-hidden="true">{{ initials or icon('user', 36) }}</span>
+        <h2>{{ full_name or user.username }}</h2>
+        <p class="profile-username">@{{ user.username }}</p>
+        <span class="role-badge">{{ user.user_type }}</span>
+        <dl>
+          <div><dt>{{ icon('user', 16) }} Username</dt><dd>{{ user.username }}</dd></div>
+          <div><dt>{{ icon('badge-check', 16) }} Account type</dt><dd>{{ user.user_type }}</dd></div>
+          <div><dt>{{ icon('mail', 16) }} Email</dt><dd>{{ user.email or '—' }}</dd></div>
+        </dl>
+      </aside>
+
+      <div class="profile-main">
+
+        <!-- Editable details -->
+        <section class="panel form-card" aria-labelledby="details-title">
+          <div class="panel-heading">
+            <h2 id="details-title">{{ icon('user', 20) }} Personal information</h2>
+          </div>
+
+          {% if error %}
+            <div class="notice notice-error notice-with-icon" role="alert">{{ icon('info', 18) }}<span>{{ error }}</span></div>
+          {% endif %}
+
+          <form action="/profile" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Return to Admin</button>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="first_name">First name</label>
+                <input type="text" id="first_name" name="first_name" value="{{ user.first_name or '' }}"
+                       maxlength="50" autocomplete="given-name" required>
+              </div>
+              <div class="form-group">
+                <label for="last_name">Last name</label>
+                <input type="text" id="last_name" name="last_name" value="{{ user.last_name or '' }}"
+                       maxlength="50" autocomplete="family-name" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email address</label>
+              <input type="email" id="email" name="email" value="{{ user.email or '' }}"
+                     maxlength="100" autocomplete="email" required>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit">{{ icon('check', 18) }} Save changes</button>
+            </div>
           </form>
-        </div>
-      {% endif %}
-      <h1 style="text-align: center;">My Profile</h1>
+        </section>
 
-      {% if password_changed %}
-        <p class="success-message">Your password has been changed.</p>
-      {% endif %}
-
-      <div style="max-width: 400px; margin: 0 auto; text-align: left;">
-
-        <p>
-          <strong>Username:</strong>
-          {{ user.username }}
-        </p>
-
-        <p>
-          <strong>Account Type:</strong>
-          {{ user.user_type }}
-        </p>
-
-        <form action="/profile" method="POST" style="margin-top: 30px;">
-
-          <div class="form-group">
-            <label for="first_name">First Name:</label>
-
-            <input
-              type="text"
-              id="first_name"
-              name="first_name"
-              value="{{ user.first_name }}"
-              required
-            >
+        <!-- Password -->
+        <section class="panel" aria-labelledby="security-title">
+          <div class="panel-heading">
+            <h2 id="security-title">{{ icon('lock', 20) }} Security</h2>
           </div>
-
-          <div class="form-group">
-            <label for="last_name">Last Name:</label>
-
-            <input
-              type="text"
-              id="last_name"
-              name="last_name"
-              value="{{ user.last_name }}"
-              required
-            >
+          <div class="settings-row">
+            <div>
+              <strong>Password</strong>
+              <small>
+                {% if password_url %}
+                  Change the password you use to log in.
+                {% elif session.get('impersonator') %}
+                  You can't change a driver's password while viewing as them.
+                {% else %}
+                  Password changes aren't available for this account.
+                {% endif %}
+              </small>
+            </div>
+            {% if password_url %}
+              <a href="{{ password_url }}" class="button-ghost">{{ icon('lock', 16) }} Change password</a>
+            {% endif %}
           </div>
-
-          <div class="form-group">
-            <label for="email">Email Address:</label>
-
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value="{{ user.email }}"
-              required
-            >
-          </div>
-
-          <button type="submit">
-            Save Changes
-          </button>
-
-        </form>
-
-        {% if user.user_type == 'Admin' %}
-        <form action="/admin/password" method="get" style="margin-top: 20px;">
-          <button type="submit">Change Password</button>
-        </form>
-        {% elif user.user_type in ('Sponsor', 'Driver') and session.get('user_id') and not session.get('impersonator') %}
-        <form action="/password" method="get" style="margin-top: 20px;">
-          <button type="submit">Change Password</button>
-        </form>
-        {% endif %}
+        </section>
 
       </div>
+    </div>
 
-    </main>
+    {% endif %}
 
-  </div>
+  </main>
+</div>
 
 </body>
 </html>

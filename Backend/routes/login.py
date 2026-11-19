@@ -313,15 +313,29 @@ def profile():
     current_user = session['username']
     user_type = session.get('user_type')
 
+    error = None
+    submitted = {}
+    if request.method == 'POST':
+        check_csrf()
+        submitted = {k: request.form.get(k, '').strip() for k in ('first_name', 'last_name', 'email')}
+        error = profile_error(**submitted)
+
     conn = get_db_connection()
 
     try:
         with conn.cursor() as cur:
 
-            if request.method == 'POST':
-                new_email = request.form.get('email', '').strip()
-                first_name = request.form.get('first_name', '').strip()
-                last_name = request.form.get('last_name', '').strip()
+            # Emails are unique, so say so instead of failing on the UPDATE
+            if request.method == 'POST' and not error:
+                cur.execute('SELECT 1 FROM UserAccount WHERE email = %s AND username <> %s',
+                            (submitted['email'], current_user))
+                if cur.fetchone():
+                    error = 'That email address is already used by another account.'
+
+            if request.method == 'POST' and not error:
+                new_email = submitted['email']
+                first_name = submitted['first_name']
+                last_name = submitted['last_name']
 
                 cur.execute("""
                     UPDATE UserAccount
@@ -366,6 +380,8 @@ def profile():
                     """, (first_name, last_name, current_user))
 
                 conn.commit()
+                # Redirect so a refresh doesn't resubmit the form
+                return redirect('/profile?saved=1')
 
             if user_type == 'Admin':
                 cur.execute("""
@@ -414,8 +430,28 @@ def profile():
     finally:
         conn.close()
 
-    return render_template('profile.html', user=user,
-                           password_changed=request.args.get('password_changed') == '1')
+    # Keep what the user typed so they only have to fix the problem
+    if error and user:
+        user = dict(user, **submitted)
+
+    return render_template('profile.html', user=user, error=error,
+                           saved=request.args.get('saved') == '1',
+                           password_changed=request.args.get('password_changed') == '1'), (400 if error else 200)
+
+
+PROFILE_NAME_MAX = 50
+PROFILE_EMAIL_MAX = 100
+
+
+def profile_error(first_name, last_name, email):
+    """Message for the first problem with the submitted profile fields, or None."""
+    if not first_name or not last_name:
+        return 'Please enter your first and last name.'
+    if len(first_name) > PROFILE_NAME_MAX or len(last_name) > PROFILE_NAME_MAX:
+        return f'Names must be {PROFILE_NAME_MAX} characters or fewer.'
+    if not email or '@' not in email or ' ' in email or len(email) > PROFILE_EMAIL_MAX:
+        return 'Please enter a valid email address.'
+    return None
 
 # Change Password: any real (database) account changes its own password by confirming the current
 # one. Reuses the admin page's change_own_password, so complexity rules and logging stay in one place.

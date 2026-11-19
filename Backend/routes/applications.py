@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session, redirect, abort
+from flask import Blueprint, render_template, request, session, redirect, abort, flash
 
 from database import get_db_connection
 from security import check_csrf
@@ -205,6 +205,7 @@ def new_application():
         values = {k: request.form.get(k, '').strip() for k in ('sponsor_id', 'message')}
         try:
             submit_application(session['username'], values['sponsor_id'], values['message'])
+            flash('Application submitted. You can follow its status below.', 'success')
             return redirect('/applications')
         except ApplicationError as exc:
             error = str(exc)

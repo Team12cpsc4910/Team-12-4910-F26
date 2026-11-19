@@ -42,6 +42,12 @@
       <a href="/applications/new" class="button-link button-inline">{{ icon('file', 18) }} Start application</a>
     </section>
 
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+      <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }}" role="status">
+        <span>{{ message }}</span>
+      </div>
+    {% endfor %}
+
     {% if current %}
       <div class="notice notice-success notice-with-icon" role="status">
         {{ icon('badge-check', 18) }}

@@ -7,60 +7,114 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=20">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      {% if session.get('impersonator') %}
-        <div class="success-message" style="text-align: center;">
-          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
-          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Return to Admin</button>
-          </form>
-        </div>
-      {% endif %}
-      <h1>Start Application</h1>
-      <p style="text-align: center;">Choose a sponsor company and tell them why you'd like to join their incentive program.</p>
+<div class="page">
+  <main>
 
-      {% if error %}
-        <p class="error-message">{{ error }}</p>
-      {% endif %}
+    {% if session.get('impersonator') %}
+      <div class="notice notice-info">
+        <span>Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).</span>
+        <form action="/admin/stop-assuming" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button-small">Return to Admin</button>
+        </form>
+      </div>
+    {% endif %}
 
-      {% if sponsors %}
-      <form action="/applications/new" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/applications">Applications</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>New application</span></li>
+      </ol>
+    </nav>
 
-        <div class="form-group">
-          <label for="sponsor_id">Sponsor Company:</label>
-          <select id="sponsor_id" name="sponsor_id" required>
-            <option value="">-- Select a sponsor --</option>
-            {% for sponsor in sponsors %}
-            <option value="{{ sponsor.sponsor_id }}"
-              {% if values.get('sponsor_id') == sponsor.sponsor_id|string %}selected{% endif %}>
-              {{ sponsor.sponsor_name }}
-            </option>
-            {% endfor %}
-          </select>
-        </div>
+    <section class="page-heading">
+      <div>
+        <h1>Start an application</h1>
+        <p>Choose a sponsor company and tell them why you'd like to join their incentive program.</p>
+      </div>
+    </section>
 
-        <div class="form-group">
-          <label for="message">Why do you want to join?</label>
-          <textarea id="message" name="message" rows="5" maxlength="{{ max_length }}" required>{{ values.get('message', '') }}</textarea>
-        </div>
+    <div class="form-layout">
 
-        <button type="submit">Submit Application</button>
-      </form>
-      {% else %}
-        <p class="catalog-empty">No sponsor companies are available to apply to right now.</p>
-      {% endif %}
+      <section class="panel form-card" aria-labelledby="form-title">
+        <h2 id="form-title" class="visually-hidden">Application</h2>
 
-      <p style="text-align: center;"><a href="/applications">Cancel</a></p>
-    </main>
-  </div>
+        {% if error %}
+          <div class="notice notice-error notice-with-icon" role="alert">
+            {{ icon('info', 18) }}<span>{{ error }}</span>
+          </div>
+        {% endif %}
+
+        {% if sponsors %}
+        <form action="/applications/new" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label for="sponsor_id">Sponsor company</label>
+            <select id="sponsor_id" name="sponsor_id" required>
+              <option value="">Select a sponsor</option>
+              {% for sponsor in sponsors %}
+              <option value="{{ sponsor.sponsor_id }}"
+                {% if values.get('sponsor_id') == sponsor.sponsor_id|string %}selected{% endif %}>
+                {{ sponsor.sponsor_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Why do you want to join?</label>
+            <textarea id="message" name="message" rows="6" maxlength="{{ max_length }}" required
+                      aria-describedby="message-hint message-count"
+                      placeholder="A sentence or two about your driving experience and why this program interests you.">{{ values.get('message', '') }}</textarea>
+            <div class="field-footer">
+              <span id="message-hint" class="field-hint">The sponsor reads this when reviewing your application.</span>
+              <span id="message-count" class="char-count" aria-live="polite">{{ values.get('message', '') | length }} / {{ max_length }}</span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit">{{ icon('arrow-right', 18) }} Submit application</button>
+            <a href="/applications" class="button-cancel">Cancel</a>
+          </div>
+        </form>
+
+        <script>
+          // Live character count for the message box
+          (function () {
+            var box = document.getElementById('message');
+            var count = document.getElementById('message-count');
+            box.addEventListener('input', function () {
+              count.textContent = box.value.length + ' / ' + box.maxLength;
+              count.classList.toggle('is-near-limit', box.value.length > box.maxLength - 25);
+            });
+          })();
+        </script>
+        {% else %}
+          <p class="empty-state">No sponsor companies are available to apply to right now.</p>
+          <a href="/applications" class="back-link">{{ icon('arrow-left', 16) }} Back to applications</a>
+        {% endif %}
+      </section>
+
+      <aside class="panel form-aside" aria-labelledby="next-title">
+        <h2 id="next-title">What happens next</h2>
+        <ol class="next-steps">
+          <li><span>1</span><div><strong>The sponsor reviews it</strong><small>They'll accept or decline your application.</small></div></li>
+          <li><span>2</span><div><strong>Track it on Applications</strong><small>Its status shows as Pending until they decide.</small></div></li>
+          <li><span>3</span><div><strong>Start earning</strong><small>Once approved, you earn points and can shop their rewards catalog.</small></div></li>
+        </ol>
+      </aside>
+
+    </div>
+
+  </main>
+</div>
 </body>
 </html>
