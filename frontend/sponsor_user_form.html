@@ -7,87 +7,163 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=26">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>Add Sponsor User</h1>
+{% macro password_field(id, label) -%}
+  <div class="form-group">
+    <label for="{{ id }}">{{ label }}</label>
+    <div class="input-with-toggle">
+      <input type="password" id="{{ id }}" name="{{ id }}" autocomplete="new-password" required>
+      <button type="button" class="password-toggle" data-target="{{ id }}" aria-label="Show {{ label | lower }}" aria-pressed="false">
+        <span class="when-hidden">{{ icon('eye', 18) }}</span><span class="when-shown">{{ icon('eye-off', 18) }}</span>
+      </button>
+    </div>
+    {{ caller() if caller }}
+  </div>
+{%- endmacro %}
 
-      {% if company %}
-        <p style="text-align: center;">Create a sponsor login for someone at <strong>{{ company.sponsor_name }}</strong> so they can help manage the program.</p>
+<div class="page">
+  <main>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/sponsor/company">Company</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Add sponsor user</span></li>
+      </ol>
+    </nav>
+
+    <section class="page-heading">
+      <div>
+        <h1>Add a sponsor user</h1>
+        <p>
+          {% if company %}
+            Create a sponsor login for someone at <strong>{{ company.sponsor_name }}</strong> so they can help manage the program.
+          {% else %}
+            Create a sponsor login for someone at your company.
+          {% endif %}
+        </p>
+      </div>
+    </section>
+
+    {% if company %}
+    <div class="form-layout">
+
+      <section class="panel form-card" aria-labelledby="form-title">
+        <h2 id="form-title" class="visually-hidden">New sponsor user</h2>
 
         {% if error %}
-          <p class="error-message">{{ error }}</p>
+          <div class="notice notice-error notice-with-icon" role="alert">{{ icon('info', 18) }}<span>{{ error }}</span></div>
         {% endif %}
 
-        <form action="/sponsor/company/users/new" method="POST" class="login-form">
+        <form action="/sponsor/company/users/new" method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          <div class="form-group">
-            <label for="first_name">First Name:</label>
-            <input type="text" id="first_name" name="first_name" value="{{ values.get('first_name', '') }}" required>
+          <h3 class="form-section-title">Their details</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first_name">First name</label>
+              <input type="text" id="first_name" name="first_name" value="{{ values.get('first_name', '') }}" maxlength="50" required>
+            </div>
+            <div class="form-group">
+              <label for="last_name">Last name</label>
+              <input type="text" id="last_name" name="last_name" value="{{ values.get('last_name', '') }}" maxlength="50" required>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="last_name">Last Name:</label>
-            <input type="text" id="last_name" name="last_name" value="{{ values.get('last_name', '') }}" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" value="{{ values.get('username', '') }}" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" value="{{ values.get('email', '') }}" maxlength="100" required>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" value="{{ values.get('username', '') }}" required>
-          </div>
-
-          <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" value="{{ values.get('email', '') }}" required>
-          </div>
-
-          <div class="form-group">
-            <label for="password">Temporary Password:</label>
-            <input type="password" id="password" name="password" required>
-
-            <ul id="password-reqs" class="password-reqs">
-              <li id="req-length" class="invalid">Minimum of 8 characters</li>
-              <li id="req-upper" class="invalid">Contain 1 uppercase letter</li>
-              <li id="req-number" class="invalid">Contain 1 number</li>
+          <h3 class="form-section-title">Temporary password</h3>
+          {% call password_field('password', 'Temporary password') %}
+            <ul id="password-reqs" class="password-reqs" aria-label="Password requirements">
+              <li id="req-length" class="invalid">At least 8 characters</li>
+              <li id="req-upper" class="invalid">1 uppercase letter</li>
+              <li id="req-number" class="invalid">1 number</li>
             </ul>
+          {% endcall %}
+          {% call password_field('confirm_password', 'Confirm password') %}
+            <p id="match-hint" class="field-hint" aria-live="polite"></p>
+          {% endcall %}
+
+          <div class="form-actions">
+            <button type="submit">{{ icon('user-plus', 18) }} Add sponsor user</button>
+            <a href="/sponsor/company" class="button-cancel">Cancel</a>
           </div>
-
-          <script>
-            const passwordInput = document.getElementById('password');
-            const checks = {
-              'req-length': val => val.length >= 8,
-              'req-upper': val => /[A-Z]/.test(val),
-              'req-number': val => /[0-9]/.test(val),
-            };
-
-            passwordInput.addEventListener('input', function() {
-              for (const [id, passes] of Object.entries(checks)) {
-                const item = document.getElementById(id);
-                item.classList.toggle('valid', passes(passwordInput.value));
-                item.classList.toggle('invalid', !passes(passwordInput.value));
-              }
-            });
-          </script>
-
-          <div class="form-group">
-            <label for="confirm_password">Confirm Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required>
-          </div>
-
-          <button type="submit">Add Sponsor User</button>
         </form>
-      {% else %}
-        <p class="catalog-empty">Your account isn't linked to a sponsor company, so you can't add sponsor users.</p>
-      {% endif %}
+      </section>
 
-      <p style="text-align: center;"><a href="/sponsor/company">Back to Company</a></p>
-    </main>
-  </div>
+      <aside class="panel form-aside" aria-labelledby="about-title">
+        <h2 id="about-title">About sponsor users</h2>
+        <ol class="next-steps">
+          <li><span>1</span><div><strong>Same access as you</strong><small>They can manage drivers, applications, rewards, and orders.</small></div></li>
+          <li><span>2</span><div><strong>Share their login</strong><small>Give them their username and temporary password.</small></div></li>
+          <li><span>3</span><div><strong>They change the password</strong><small>Sponsor users can set their own password from My profile.</small></div></li>
+        </ol>
+      </aside>
+
+    </div>
+
+    <script>
+      // Requirement checklist, "passwords match" hint, and show/hide buttons
+      (function () {
+        var password = document.getElementById('password');
+        var confirmPassword = document.getElementById('confirm_password');
+        var matchHint = document.getElementById('match-hint');
+        var checks = {
+          'req-length': function (val) { return val.length >= 8; },
+          'req-upper': function (val) { return /[A-Z]/.test(val); },
+          'req-number': function (val) { return /[0-9]/.test(val); }
+        };
+        function update() {
+          Object.keys(checks).forEach(function (id) {
+            var passes = checks[id](password.value);
+            var item = document.getElementById(id);
+            item.classList.toggle('valid', passes);
+            item.classList.toggle('invalid', !passes);
+          });
+          if (!confirmPassword.value) {
+            matchHint.textContent = '';
+            matchHint.className = 'field-hint';
+          } else if (confirmPassword.value === password.value) {
+            matchHint.textContent = 'Passwords match';
+            matchHint.className = 'field-hint is-valid';
+          } else {
+            matchHint.textContent = "Passwords don't match yet";
+            matchHint.className = 'field-hint is-invalid';
+          }
+        }
+        password.addEventListener('input', update);
+        confirmPassword.addEventListener('input', update);
+        document.querySelectorAll('.password-toggle').forEach(function (toggle) {
+          toggle.addEventListener('click', function () {
+            var input = document.getElementById(toggle.dataset.target);
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+            toggle.setAttribute('aria-label', toggle.getAttribute('aria-label').replace(show ? 'Show' : 'Hide', show ? 'Hide' : 'Show'));
+          });
+        });
+      })();
+    </script>
+    {% else %}
+      <p class="empty-state">Your account isn't linked to a sponsor company, so you can't add sponsor users.</p>
+      <a href="/sponsor/company" class="back-link">{{ icon('arrow-left', 16) }} Back to company</a>
+    {% endif %}
+
+  </main>
+</div>
 </body>
 </html>

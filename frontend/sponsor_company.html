@@ -7,107 +7,143 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=26">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>Company Profile</h1>
-
-      {% if company %}
-        <p style="text-align: center;">Keep your sponsor company's information up to date. Drivers see this name when they sign up and apply.</p>
-
-        {% if saved %}
-          <p class="success-message">Company profile updated.</p>
-        {% endif %}
-
-        {% if error %}
-          <p class="error-message">{{ error }}</p>
-        {% endif %}
-
-        <form action="/sponsor/company" method="POST" class="login-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-          <div class="form-group">
-            <label for="sponsor_name">Company Name:</label>
-            <input type="text" id="sponsor_name" name="sponsor_name" maxlength="{{ max_length }}"
-                   value="{{ values.get('sponsor_name', company.sponsor_name) }}" required>
-          </div>
-
-          <button type="submit">Save Changes</button>
-        </form>
-
-        <h2>Program Details</h2>
-        <dl>
-          <dt>Point Value</dt>
-          <dd>${{ company.point_value }} per point</dd>
-        </dl>
-
-        <h2>Sponsor Users</h2>
-        <p>Everyone with a sponsor login for your company. Deactivate a former employee's login so they can no longer sign in.</p>
-
-        {% if deactivated %}
-          <p class="success-message">Login deactivated. That user can no longer sign in.</p>
-        {% endif %}
-        {% if added %}
-          <p class="success-message">Sponsor user added. They can now log in with the username and password you set.</p>
-        {% endif %}
-
-        <form action="/sponsor/company/users/new" method="get">
-          <button type="submit">Add Sponsor User</button>
-        </form>
-        
-        {% if users_error %}
-          <p class="error-message">{{ users_error }}</p>
-        {% endif %}
-
-        <table class="catalog-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Username</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for user in users %}
-            <tr>
-              <td>{{ user.first_name }} {{ user.last_name }}</td>
-              <td>{{ user.username }}</td>
-              <td>
-                {% if user.account_locked %}
-                  <span class="status out-of-stock">Deactivated</span>
-                {% else %}
-                  <span class="status in-stock">Active</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if user.sponsor_user_id == my_sponsor_user_id %}
-                  (You)
-                {% elif not user.account_locked %}
-                  <form action="/sponsor/company/users/{{ user.sponsor_user_id }}/deactivate" method="POST"
-                        onsubmit="return confirm('Deactivate this login? They will no longer be able to sign in.');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="danger">Deactivate</button>
-                  </form>
-                {% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No sponsor users found for your company.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="catalog-empty">Your account isn't linked to a sponsor company.</p>
-      {% endif %}
-    </main>
+{% macro notice(kind, text) -%}
+  <div class="notice notice-{{ kind }} notice-with-icon" role="{{ 'alert' if kind == 'error' else 'status' }}">
+    {{ icon('info' if kind == 'error' else 'check', 18) }}<span>{{ text }}</span>
   </div>
+{%- endmacro %}
+
+<div class="page">
+  <main>
+
+    {% if company %}
+
+    {% set active_users = users | rejectattr('account_locked') | list %}
+
+    <section class="page-heading">
+      <div class="heading-with-avatar">
+        <span class="app-icon is-approved avatar-md" aria-hidden="true">{{ icon('building', 26) }}</span>
+        <div>
+          <h1>{{ company.sponsor_name }}</h1>
+          <p>Your sponsor company profile and team logins.</p>
+        </div>
+      </div>
+    </section>
+
+    {% if saved %}{{ notice('success', 'Company profile updated.') }}{% endif %}
+    {% if added %}{{ notice('success', 'Sponsor user added. They can now log in with the username and password you set.') }}{% endif %}
+    {% if deactivated %}{{ notice('success', 'Login deactivated. That user can no longer sign in.') }}{% endif %}
+
+    <div class="form-layout">
+
+      <div class="order-main">
+
+        <!-- Company name -->
+        <section class="panel form-card" aria-labelledby="profile-title">
+          <div class="panel-heading">
+            <h2 id="profile-title">{{ icon('building', 20) }} Company profile</h2>
+          </div>
+          {% if error %}{{ notice('error', error) }}{% endif %}
+          <form action="/sponsor/company" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+              <label for="sponsor_name">Company name</label>
+              <input type="text" id="sponsor_name" name="sponsor_name" maxlength="{{ max_length }}"
+                     value="{{ values.get('sponsor_name', company.sponsor_name) }}" required aria-describedby="name-hint">
+              <p id="name-hint" class="field-hint">Drivers see this name when they sign up and apply.</p>
+            </div>
+            <div class="form-actions">
+              <button type="submit">{{ icon('check', 18) }} Save changes</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Team logins -->
+        <section class="panel" aria-labelledby="users-title">
+          <div class="panel-heading">
+            <h2 id="users-title">{{ icon('users', 20) }} Sponsor users <span class="count-pill">{{ active_users | length }} active</span></h2>
+            <a href="/sponsor/company/users/new" class="button-ghost">{{ icon('user-plus', 16) }} Add user</a>
+          </div>
+          <p class="panel-intro">Everyone with a sponsor login for your company. Deactivate a former employee's login so they can no longer sign in.</p>
+
+          {% if users_error %}{{ notice('error', users_error) }}{% endif %}
+
+          {% if users %}
+            <ul class="app-list">
+              {% for user in users %}
+              {% set is_me = user.sponsor_user_id == my_sponsor_user_id %}
+              <li>
+                <span class="app-icon avatar-initials {{ 'is-muted' if user.account_locked else 'is-approved' }}" aria-hidden="true">
+                  {{ ((user.first_name or '?')[0] ~ (user.last_name or '')[:1]) | upper }}
+                </span>
+                <div class="app-info">
+                  <strong>{{ user.first_name }} {{ user.last_name }}{% if is_me %} <span class="you-pill">You</span>{% endif %}</strong>
+                  <small>@{{ user.username }}</small>
+                </div>
+                <div class="app-side app-side-row">
+                  {% if user.account_locked %}
+                    <span class="status out-of-stock">Deactivated</span>
+                  {% else %}
+                    <span class="status in-stock">Active</span>
+                  {% endif %}
+                  {% if not is_me and not user.account_locked %}
+                    <form action="/sponsor/company/users/{{ user.sponsor_user_id }}/deactivate" method="POST"
+                          onsubmit="return confirm('Deactivate this login? They will no longer be able to sign in.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="link-button link-danger">Deactivate</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="empty-state">No sponsor users found for your company.</p>
+          {% endif %}
+        </section>
+
+      </div>
+
+      <!-- Program facts -->
+      <aside class="panel form-aside" aria-labelledby="program-title">
+        <h2 id="program-title">Program details</h2>
+        <dl class="detail-list">
+          <div><dt>Point value</dt><dd>${{ '{:g}'.format(company.point_value | float) }} per point</dd></div>
+          <div><dt>Team logins</dt><dd>{{ users | length }}</dd></div>
+        </dl>
+        <ul class="link-list dash-section">
+          <li>
+            <a href="/sponsor/drivers">
+              <span class="app-icon is-approved">{{ icon('users', 18) }}</span>
+              <span><strong>Drivers</strong><small>Manage drivers in your program.</small></span>
+            </a>
+          </li>
+          <li>
+            <a href="/dashboard#catalog">
+              <span class="app-icon">{{ icon('gift', 18) }}</span>
+              <span><strong>Rewards catalog</strong><small>Add and manage rewards.</small></span>
+            </a>
+          </li>
+        </ul>
+      </aside>
+
+    </div>
+
+    {% else %}
+
+      <section class="page-heading"><div><h1>Company profile</h1></div></section>
+      <p class="empty-state">Your account isn't linked to a sponsor company.</p>
+
+    {% endif %}
+
+  </main>
+</div>
 </body>
 </html>

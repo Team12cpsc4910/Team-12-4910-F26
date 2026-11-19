@@ -4359,3 +4359,31 @@ button.button-danger-outline:hover {
     margin-left: 6px;
   }
 }
+
+/* ===== Sponsor company (sponsor_company.html, sponsor_user_form.html) ===== */
+.you-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  font-size: 0.72em;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.panel-heading .button-ghost {
+  padding: 8px 14px;
+}
+
+/* Long panel titles wrap instead of squeezing their pills and buttons */
+.panel-heading {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.count-pill,
+.panel-heading .button-ghost {
+  white-space: nowrap;
+}
