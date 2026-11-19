@@ -8,87 +8,144 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css?v=25">
 </head>
 
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-    <div class="container">
+{% macro when(value) -%}
+    {% if value and value.strftime is defined %}<span>{{ value.strftime('%b %d, %Y') }}<small>{{ value.strftime('%I:%M %p') }}</small></span>{% else %}{{ value or '—' }}{% endif %}
+{%- endmacro %}
 
+{% set open_orders = orders | selectattr('status', 'equalto', 'Requested') | list %}
+{% set done_orders = orders | rejectattr('status', 'equalto', 'Requested') | list %}
 
-        <main>
-            <h1>Reward Orders</h1>
+<div class="page">
+    <main>
 
-            {% for category, message in get_flashed_messages(with_categories=true) %}
-            <p role="status">{{ message }}</p>
-            {% endfor %}
+        <section class="page-heading">
+            <div>
+                <h1>Reward orders</h1>
+                <p>Rewards your drivers have ordered. Mark each one fulfilled once you've delivered it.</p>
+            </div>
+        </section>
 
-            <table class="catalog-table">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }} notice-with-icon" role="status">
+                {{ icon('info' if category == 'error' else 'check', 18) }}<span>{{ message }}</span>
+            </div>
+        {% endfor %}
 
-                <thead>
-                    <tr>
-                        <th>Driver</th>
-                        <th>Product</th>
-                        <th>Points</th>
-                        <th>Status</th>
-                        <th>Purchased</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
+        <section class="stat-grid stat-grid-3" aria-label="Order summary">
+            <a class="stat-card{{ ' stat-card-warning' if open_orders }}" href="#to-fulfill">
+                <span class="stat-icon">{{ icon('package', 22) }}</span>
+                <span class="stat-label">To fulfill</span>
+                <strong class="stat-value">{{ open_orders | length }}</strong>
+                <span class="stat-link">{{ 'Waiting on you' if open_orders else 'All caught up' }}</span>
+            </a>
+            <a class="stat-card" href="#fulfilled">
+                <span class="stat-icon">{{ icon('badge-check', 22) }}</span>
+                <span class="stat-label">Fulfilled</span>
+                <strong class="stat-value">{{ done_orders | length }}</strong>
+                <span class="stat-link">View history {{ icon('arrow-right', 16) }}</span>
+            </a>
+            <div class="stat-card">
+                <span class="stat-icon">{{ icon('coins', 22) }}</span>
+                <span class="stat-label">Points redeemed</span>
+                <strong class="stat-value">{{ '{:,}'.format(orders | sum(attribute='points_spent')) }}</strong>
+                <span class="stat-link">Across {{ orders | length }} order{{ 's' if orders | length != 1 }}</span>
+            </div>
+        </section>
 
-                <tbody>
-                    {% for order in orders %}
+        <!-- Waiting on the sponsor -->
+        <section class="panel dash-section" id="to-fulfill" aria-labelledby="open-title">
+            <div class="panel-heading">
+                <h2 id="open-title">{{ icon('package', 20) }} To fulfill <span class="count-pill{{ ' count-pill-alert' if open_orders }}">{{ open_orders | length }}</span></h2>
+                {% if open_orders %}<span class="panel-meta hide-on-phone">Oldest orders are at the bottom</span>{% endif %}
+            </div>
 
-                    <tr>
-                        <td>
-                            {{ order.first_name }}
-                            {{ order.last_name }}
-                        </td>
+            {% if open_orders %}
+            <div class="table-scroll">
+                <table class="catalog-table report-table stack-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Reward</th>
+                            <th>Driver</th>
+                            <th class="num">Points</th>
+                            <th>Ordered</th>
+                            <th><span class="visually-hidden">Action</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in open_orders %}
+                        <tr>
+                            <td data-label="Order"><span class="order-number">#{{ order.redemption_id }}</span></td>
+                            <td data-label="Reward"><strong>{{ order.product_name }}</strong></td>
+                            <td data-label="Driver">{{ order.first_name }} {{ order.last_name }}</td>
+                            <td data-label="Points" class="num"><strong>{{ '{:,}'.format(order.points_spent) }}</strong></td>
+                            <td data-label="Ordered" class="date-cell">{{ when(order.redeemed_at) }}</td>
+                            <td class="action-cell">
+                                <form method="POST" action="/sponsor/redemptions/{{ order.redemption_id }}/fulfill">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="button-small"
+                                            aria-label="Mark order {{ order.redemption_id }} fulfilled">{{ icon('check', 16) }} Mark fulfilled</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <p class="empty-state">{{ icon('badge-check', 18) }} You're all caught up. New orders will show up here.</p>
+            {% endif %}
+        </section>
 
-                        <td>{{ order.product_name }}</td>
-                        <td>{{ order.points_spent }}</td>
-                        <td>{{ order.status }}</td>
-                        <td>{{ order.redeemed_at }}</td>
+        <!-- Already done -->
+        <section class="panel dash-section" id="fulfilled" aria-labelledby="done-title">
+            <div class="panel-heading">
+                <h2 id="done-title">{{ icon('badge-check', 20) }} Fulfilled <span class="count-pill">{{ done_orders | length }}</span></h2>
+            </div>
 
-                        <td>
-                            {% if order.status == 'Requested' %}
+            {% if done_orders %}
+            <div class="table-scroll">
+                <table class="catalog-table report-table stack-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Reward</th>
+                            <th>Driver</th>
+                            <th class="num">Points</th>
+                            <th>Ordered</th>
+                            <th>Fulfilled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in done_orders %}
+                        <tr>
+                            <td data-label="Order"><span class="order-number">#{{ order.redemption_id }}</span></td>
+                            <td data-label="Reward">{{ order.product_name }}</td>
+                            <td data-label="Driver">{{ order.first_name }} {{ order.last_name }}</td>
+                            <td data-label="Points" class="num">{{ '{:,}'.format(order.points_spent) }}</td>
+                            <td data-label="Ordered" class="date-cell">{{ when(order.redeemed_at) }}</td>
+                            <td data-label="Fulfilled" class="date-cell">
+                                {% if order.fulfilled_at %}{{ when(order.fulfilled_at) }}{% else %}<span class="status {{ order.status | lower }}">{{ order.status }}</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <p class="empty-state">Fulfilled orders will appear here.</p>
+            {% endif %}
+        </section>
 
-                            <form method="POST"
-                                  action="/sponsor/redemptions/{{ order.redemption_id }}/fulfill">
-
-                                <input type="hidden"
-                                       name="csrf_token"
-                                       value="{{ csrf_token() }}">
-
-                                <button type="submit">
-                                    Mark Fulfilled
-                                </button>
-
-                            </form>
-
-                            {% else %}
-
-                                {{ order.fulfilled_at or 'Fulfilled' }}
-
-                            {% endif %}
-                        </td>
-                    </tr>
-
-                    {% else %}
-
-                    <tr>
-                        <td colspan="6" class="catalog-empty">
-                            No reward orders yet.
-                        </td>
-                    </tr>
-
-                    {% endfor %}
-                </tbody>
-
-            </table>
-        </main>
-    </div>
+    </main>
+</div>
 </body>
 </html>
