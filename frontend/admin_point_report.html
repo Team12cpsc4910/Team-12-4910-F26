@@ -3,74 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Driver Point Report</title>
+  <title>Driver Point Report - Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=31">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container wide">
-    <main>
-      <h1>Reports</h1>
+{% set report_tab = 'points' %}
+{% set selected = (drivers | selectattr('driver_id', 'equalto', selected_driver_id) | first) if selected_driver_id else none %}
+{% set gained = report | selectattr('points_change', 'gt', 0) | sum(attribute='points_change') %}
+{% set lost = report | selectattr('points_change', 'lt', 0) | sum(attribute='points_change') %}
 
-      <div class="report-tabs">
-        <a href="/admin/reports">Sales Summary</a>
-        <a href="/admin/reports?view=detailed">Sales Details</a>
-        <a href="/admin/reports/points" class="active">Driver Points</a>
-        <a href="/admin/application-log">Application Log</a>
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>Reports</h1>
+        <p>Reward sales across every sponsor, plus driver point and application history.</p>
       </div>
+    </section>
 
-      <h2>Driver Point Report</h2>
-      <p>Every point change, newest first. Changes not made by a sponsor user, such as reward redemptions, show as System.</p>
+    {% include '_report_tabs.html' %}
 
-      <form action="/admin/reports/points" method="get" class="report-filter">
-        <label for="driver_id">Driver:</label>
-        <select id="driver_id" name="driver_id">
-          <option value="">All Drivers</option>
-          {% for driver in drivers %}
-            <option value="{{ driver.driver_id }}" {% if driver.driver_id == selected_driver_id %}selected{% endif %}>{{ driver.first_name }} {{ driver.last_name }} ({{ driver.username }})</option>
-          {% endfor %}
-        </select>
-        <button type="submit">Show Points</button>
+    <section class="stat-grid stat-grid-3" aria-label="Point totals">
+      <div class="stat-card">
+        <span class="stat-icon">{{ icon('activity', 22) }}</span>
+        <span class="stat-label">Point changes</span>
+        <strong class="stat-value">{{ '{:,}'.format(report | length) }}</strong>
+        <span class="stat-link">{{ ('For ' ~ selected.first_name ~ ' ' ~ selected.last_name) if selected else 'All drivers' }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">{{ icon('arrow-right', 22) }}</span>
+        <span class="stat-label">Points added</span>
+        <strong class="stat-value points-up">+{{ '{:,}'.format(gained) }}</strong>
+        <span class="stat-link">Awards and automatic bonuses</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">{{ icon('arrow-left', 22) }}</span>
+        <span class="stat-label">Points removed</span>
+        <strong class="stat-value points-down">{{ '{:,}'.format(lost) }}</strong>
+        <span class="stat-link">Deductions and reward orders</span>
+      </div>
+    </section>
+
+    <section class="panel dash-section" aria-labelledby="points-title">
+      <div class="panel-heading">
+        <h2 id="points-title">{{ icon('coins', 20) }} Driver point report{% if selected %} <span class="count-pill">{{ selected.first_name }} {{ selected.last_name }}</span>{% endif %}</h2>
+        <a href="/admin/reports/download/points{% if selected_driver_id %}?driver_id={{ selected_driver_id }}{% endif %}" class="button-ghost">{{ icon('file', 16) }} Download CSV</a>
+      </div>
+      <p class="panel-intro">Every point change, newest first. Changes not made by a sponsor user, such as reward orders, show as System.</p>
+
+      <form action="/admin/reports/points" method="get" class="filter-bar report-filter-bar">
+        <label class="filter-field">
+          <span>Driver</span>
+          <select id="driver_id" name="driver_id">
+            <option value="">All drivers</option>
+            {% for driver in drivers %}
+              <option value="{{ driver.driver_id }}" {% if driver.driver_id == selected_driver_id %}selected{% endif %}>{{ driver.first_name }} {{ driver.last_name }} ({{ driver.username }})</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button type="submit" class="button-small">Apply</button>
+          {% if selected_driver_id %}<a href="/admin/reports/points" class="text-link">Clear</a>{% endif %}
+        </div>
       </form>
 
-      <table class="catalog-table report-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Driver</th>
-            <th class="num">Change</th>
-            <th>Changed By</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if report %}
-            {% for row in report %}
-            <tr>
-              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
-              <td>{{ row.first_name }} {{ row.last_name }}</td>
-              <td class="num {% if row.points_change > 0 %}points-up{% else %}points-down{% endif %}">{% if row.points_change > 0 %}+{% endif %}{{ '{:,}'.format(row.points_change) }}</td>
-              <td>{{ row.changed_by }}</td>
-              <td>{{ row.reason }}</td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="5" class="catalog-empty">There are no point changes{% if selected_driver_id %} for this driver{% endif %} yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-      <div class="report-footer">
-        <span>{{ report | length }} point change{% if report | length != 1 %}s{% endif %}</span>
-        <a href="/admin/reports/download/points{% if selected_driver_id %}?driver_id={{ selected_driver_id }}{% endif %}">Download CSV</a>
-      </div>
-    </main>
-  </div>
+      {% if report %}
+        <div class="table-scroll">
+          <table class="catalog-table report-table stack-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Driver</th>
+                <th class="num">Change</th>
+                <th>Changed by</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in report %}
+              <tr>
+                <td data-label="Date" class="date-cell"><span>{{ row.datetime.strftime('%b %d, %Y') }}<small>{{ row.datetime.strftime('%I:%M %p') }}</small></span></td>
+                <td data-label="Driver">{{ row.first_name }} {{ row.last_name }}</td>
+                <td data-label="Change" class="num {{ 'points-up' if row.points_change > 0 else 'points-down' }}"><strong>{{ '+' if row.points_change > 0 }}{{ '{:,}'.format(row.points_change) }}</strong></td>
+                <td data-label="Changed by">{{ row.changed_by }}</td>
+                <td data-label="Reason">{{ row.reason }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="results-bar">{{ report | length }} point change{{ 's' if report | length != 1 }}</p>
+      {% else %}
+        <p class="empty-state">There are no point changes{% if selected_driver_id %} for this driver{% endif %} yet.</p>
+      {% endif %}
+    </section>
+
+  </main>
+</div>
 </body>
 </html>

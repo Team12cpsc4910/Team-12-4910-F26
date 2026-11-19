@@ -3,75 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Application Log</title>
+  <title>Application Log - Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=31">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container wide">
-    <main>
-      <h1>Reports</h1>
+{% set report_tab = 'log' %}
+{% set selected_name = (sponsors | selectattr('sponsor_id', 'equalto', selected_sponsor_id) | map(attribute='sponsor_name') | first) if selected_sponsor_id else '' %}
+{% set state_class = {'pending': 'pending', 'approved': 'approved', 'rejected': 'rejected'} %}
 
-      <div class="report-tabs">
-        <a href="/admin/reports">Sales Summary</a>
-        <a href="/admin/reports?view=detailed">Sales Details</a>
-        <a href="/admin/reports/points">Driver Points</a>
-        <a href="/admin/application-log" class="active">Application Log</a>
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>Reports</h1>
+        <p>Reward sales across every sponsor, plus driver point and application history.</p>
       </div>
+    </section>
 
-      <h2>Application Log</h2>
-      <p>Every driver application event for all sponsors, newest first.</p>
+    {% include '_report_tabs.html' %}
 
-      <form action="/admin/application-log" method="get" class="report-filter">
-        <label for="sponsor_id">Sponsor:</label>
-        <select id="sponsor_id" name="sponsor_id">
-          <option value="">All Sponsors</option>
-          {% for sponsor in sponsors %}
-            <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit">Show Log</button>
+    <section class="panel" aria-labelledby="log-title">
+      <div class="panel-heading">
+        <h2 id="log-title">{{ icon('file', 20) }} Application log{% if selected_name %} <span class="count-pill">{{ selected_name }}</span>{% endif %}</h2>
+        <span class="panel-meta">{{ log | length }} entr{{ 'y' if log | length == 1 else 'ies' }}</span>
+      </div>
+      <p class="panel-intro">Every driver application event for all sponsors, newest first.</p>
+
+      <form action="/admin/application-log" method="get" class="filter-bar report-filter-bar">
+        <label class="filter-field">
+          <span>Sponsor</span>
+          <select id="sponsor_id" name="sponsor_id">
+            <option value="">All sponsors</option>
+            {% for sponsor in sponsors %}
+              <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button type="submit" class="button-small">Apply</button>
+          {% if selected_sponsor_id %}<a href="/admin/application-log" class="text-link">Clear</a>{% endif %}
+        </div>
       </form>
 
-      <table class="catalog-table report-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Driver</th>
-            <th>Sponsor</th>
-            <th class="num">Application #</th>
-            <th>Entry</th>
-            <th>Current Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if log %}
-            {% for row in log %}
-            <tr>
-              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
-              <td>{{ row.first_name }} {{ row.last_name }}</td>
-              <td>{{ row.sponsor_name }}</td>
-              <td class="num">{{ row.app_id }}</td>
-              <td>{{ row.reason }}</td>
-              <td><span class="status {{ row.state | lower }}">{{ row.state | capitalize }}</span></td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="6" class="catalog-empty">There are no application log entries{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-      <div class="report-footer">
-        <span>{{ log | length }} entr{% if log | length != 1 %}ies{% else %}y{% endif %}</span>
-      </div>
-    </main>
-  </div>
+      {% if log %}
+        <div class="table-scroll">
+          <table class="catalog-table report-table stack-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Driver</th>
+                <th>Sponsor</th>
+                <th class="num">App #</th>
+                <th>Entry</th>
+                <th>Current status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in log %}
+              <tr>
+                <td data-label="Date" class="date-cell"><span>{{ row.datetime.strftime('%b %d, %Y') }}<small>{{ row.datetime.strftime('%I:%M %p') }}</small></span></td>
+                <td data-label="Driver"><strong>{{ row.first_name }} {{ row.last_name }}</strong></td>
+                <td data-label="Sponsor">{{ row.sponsor_name }}</td>
+                <td data-label="App #" class="num"><span class="order-number">#{{ row.app_id }}</span></td>
+                <td data-label="Entry">{{ row.reason or '—' }}</td>
+                <td data-label="Current status"><span class="status {{ state_class.get(row.state | lower, 'neutral') }}">{{ row.state | capitalize }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-state">There are no application log entries{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</p>
+      {% endif %}
+    </section>
+
+  </main>
+</div>
 </body>
 </html>

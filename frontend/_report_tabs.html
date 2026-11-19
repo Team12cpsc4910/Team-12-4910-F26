@@ -1,0 +1,17 @@
+{#- Tabs shared by the admin report pages. Set `report_tab` before including:
+    'summary', 'details', 'points', or 'log'. -#}
+{% from '_icons.html' import icon %}
+{% set sponsor_qs = ('sponsor_id=' ~ selected_sponsor_id) if selected_sponsor_id else '' %}
+{% set tabs = [
+  ('summary', '/admin/reports' ~ ('?' ~ sponsor_qs if sponsor_qs else ''), 'Sales summary', 'chart'),
+  ('details', '/admin/reports?view=detailed' ~ ('&' ~ sponsor_qs if sponsor_qs else ''), 'Sales details', 'list'),
+  ('points', '/admin/reports/points', 'Driver points', 'coins'),
+  ('log', '/admin/application-log', 'Application log', 'file'),
+] %}
+<nav class="tab-nav" aria-label="Report type">
+  {% for key, href, label, icon_name in tabs %}
+    <a href="{{ href }}" class="{{ 'active' if report_tab == key }}"{% if report_tab == key %} aria-current="page"{% endif %}>
+      {{ icon(icon_name, 16) }} {{ label }}
+    </a>
+  {% endfor %}
+</nav>

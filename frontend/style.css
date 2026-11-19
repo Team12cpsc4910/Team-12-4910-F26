@@ -4759,3 +4759,84 @@ button.link-button.link-primary:hover {
 #suggest-password {
   margin-top: 4px;
 }
+
+/* ===== Admin reports (admin_reports.html, admin_point_report.html, admin_application_log.html) ===== */
+/* Tab bar; overrides the site-wide nav bar styles */
+nav.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 24px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.75);
+}
+
+nav.tab-nav a {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: #94a3b8;
+  font-size: 0.92em;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+nav.tab-nav a:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+nav.tab-nav a.active {
+  color: #0f172a;
+  background: #00e676;
+}
+
+.report-filter-bar .filter-field select {
+  min-width: 240px;
+}
+
+.table-link {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.table-link:hover {
+  color: #00e676;
+}
+
+.stat-value.points-up {
+  color: #4ade80;
+}
+
+.stat-value.points-down {
+  color: #f87171;
+}
+
+@media (max-width: 760px) {
+  .stack-table tfoot td {
+    background: none;
+  }
+
+  .stack-table tfoot tr {
+    border-color: rgba(0, 230, 118, 0.35);
+  }
+
+  .stack-table tfoot td:first-child::before {
+    content: none;
+  }
+
+  .report-filter-bar .filter-field,
+  .report-filter-bar .filter-field select {
+    min-width: 0;
+    width: 100%;
+  }
+}
