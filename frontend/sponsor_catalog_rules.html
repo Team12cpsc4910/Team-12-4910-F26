@@ -7,44 +7,104 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css?v=24">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-<div class="container">
+<div class="page">
     <main>
-        <h1>Automatic Catalog Generation Rules</h1>
-        <p>Rules decide whether <strong>automatically managed</strong> rewards appear in your drivers' catalog.
-           Saving rules updates existing auto-managed rewards immediately. Stock availability is not changed.</p>
+
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Automatic rules</span></li>
+            </ol>
+        </nav>
+
+        <section class="page-heading">
+            <div>
+                <h1>Automatic catalog rules</h1>
+                <p>Decide which <strong>auto-managed</strong> rewards your drivers can see.</p>
+            </div>
+        </section>
+
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <p role="status">{{ message }}</p>
+            <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }} notice-with-icon" role="status">
+                {{ icon('info' if category == 'error' else 'check', 18) }}<span>{{ message }}</span>
+                {% if category != 'error' %}<a href="/dashboard#catalog" class="notice-action">View catalog {{ icon('arrow-right', 16) }}</a>{% endif %}
+            </div>
         {% endfor %}
-        <form method="POST" action="/sponsor/catalog/rules" class="catalog-rules-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label>Minimum point price
-                <input name="min_points" type="number" min="1" max="1000000" value="{{ rules.min_points }}" required>
-            </label>
-            <label>Maximum point price
-                <input name="max_points" type="number" min="1" max="1000000" value="{{ rules.max_points }}" required>
-            </label>
-            <fieldset>
-                <legend>Categories to offer automatically</legend>
-                {% for choice in categories %}
-                <label><input type="checkbox" name="allowed_categories" value="{{ choice }}"
-                       {{ 'checked' if choice in selected_categories else '' }}> {{ choice }}</label>
-                {% endfor %}
-            </fieldset>
-            <fieldset>
-                <legend>Allowed G/PG ratings</legend>
-                <label><input type="checkbox" name="allow_g" {{ 'checked' if rules.allow_g else '' }}> G</label>
-                <label><input type="checkbox" name="allow_pg" {{ 'checked' if rules.allow_pg else '' }}> PG</label>
-            </fieldset>
-            <button type="submit">Save and regenerate catalog</button>
-        </form>
-        <p>Rewards without a sponsor-confirmed G or PG rating are always hidden from drivers.
-           These settings do not independently verify content ratings.</p>
+
+        <div class="form-layout">
+
+            <section class="panel form-card" aria-labelledby="rules-title">
+                <h2 id="rules-title" class="visually-hidden">Rules</h2>
+
+                <form method="POST" action="/sponsor/catalog/rules">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <h3 class="form-section-title">Point price range</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="min_points">Minimum points</label>
+                            <input id="min_points" name="min_points" type="number" min="1" max="1000000"
+                                   value="{{ rules.min_points }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="max_points">Maximum points</label>
+                            <input id="max_points" name="max_points" type="number" min="1" max="1000000"
+                                   value="{{ rules.max_points }}" required>
+                        </div>
+                    </div>
+                    <p class="field-hint">Auto-managed rewards priced outside this range are hidden from drivers.</p>
+
+                    <h3 class="form-section-title">Categories to offer</h3>
+                    <fieldset class="chip-fieldset">
+                        <legend class="visually-hidden">Categories to offer automatically</legend>
+                        {% for choice in categories %}
+                            <label class="check-chip">
+                                <input type="checkbox" name="allowed_categories" value="{{ choice }}"
+                                       {{ 'checked' if choice in selected_categories }}>
+                                <span>{{ icon('check', 14) }} {{ choice }}</span>
+                            </label>
+                        {% endfor %}
+                    </fieldset>
+
+                    <h3 class="form-section-title">Content ratings to offer</h3>
+                    <fieldset class="chip-fieldset">
+                        <legend class="visually-hidden">Allowed G/PG ratings</legend>
+                        <label class="check-chip">
+                            <input type="checkbox" name="allow_g" {{ 'checked' if rules.allow_g }}>
+                            <span>{{ icon('check', 14) }} G</span>
+                        </label>
+                        <label class="check-chip">
+                            <input type="checkbox" name="allow_pg" {{ 'checked' if rules.allow_pg }}>
+                            <span>{{ icon('check', 14) }} PG</span>
+                        </label>
+                    </fieldset>
+
+                    <div class="form-actions">
+                        <button type="submit">{{ icon('check', 18) }} Save and update catalog</button>
+                        <a href="/dashboard#catalog" class="button-cancel">Cancel</a>
+                    </div>
+                </form>
+            </section>
+
+            <aside class="panel form-aside" aria-labelledby="how-title">
+                <h2 id="how-title">How rules work</h2>
+                <ul class="detail-notes">
+                    <li>{{ icon('list', 16) }} <span>Rules only apply to rewards marked <strong>Auto rules</strong> on your dashboard.</span></li>
+                    <li>{{ icon('check', 16) }} Saving updates those rewards right away.</li>
+                    <li>{{ icon('package', 16) }} Stock is never changed. Disabled rewards stay disabled.</li>
+                    <li>{{ icon('shield', 16) }} Rewards without a G or PG rating are always hidden, whatever the rules say. These settings don't verify ratings for you.</li>
+                </ul>
+            </aside>
+
+        </div>
+
     </main>
 </div>
 </body>

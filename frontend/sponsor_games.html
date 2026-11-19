@@ -10,203 +10,144 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css?v=24">
 </head>
 
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-
-<div class="container">
-
-
+<div class="page">
     <main>
 
-        <h1>Find Video Game Rewards</h1>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Find games</span></li>
+            </ol>
+        </nav>
 
-        <p>
-            Find a game with GG.deals and add it using
-            its current US retail price.
-        </p>
-
-        <p>
-            <strong>$1 = 100 points</strong>
-        </p>
-
-        <!-- Game Search -->
-
-        <form method="GET" action="/sponsor/games">
-
-            <label for="search">
-                Game name or GG.deals game link
-            </label>
-
-            <input
-                id="search"
-                name="search"
-                value="{{ search }}"
-                maxlength="180"
-                placeholder="elden-ring or https://gg.deals/game/elden-ring/"
-                required
-            >
-
-            <button type="submit">
-                Look Up Game
-            </button>
-
-        </form>
-
-        <p>
-            <small>
-                If searching by name does not work,
-                paste the exact game URL from
-                <a href="https://gg.deals/">GG.deals</a>.
-            </small>
-        </p>
-
-        <!-- Notifications -->
+        <section class="page-heading">
+            <div>
+                <h1>Find games</h1>
+                <p>Look up a game on GG.deals and add it as a reward priced from its current US retail price.</p>
+            </div>
+            <span class="points-pill">{{ icon('coins', 18) }} $1 = 100 points</span>
+        </section>
 
         {% for category, message in get_flashed_messages(with_categories=true) %}
-
-            <p role="status">{{ message }}</p>
-
+            <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }} notice-with-icon" role="status">
+                {{ icon('info' if category == 'error' else 'check', 18) }}<span>{{ message }}</span>
+            </div>
         {% endfor %}
 
+        <!-- Lookup -->
+        <section class="panel" aria-labelledby="lookup-title">
+            <h2 id="lookup-title" class="visually-hidden">Look up a game</h2>
+            <form method="GET" action="/sponsor/games" class="lookup-form" role="search">
+                <label for="search" class="lookup-label">Game name or GG.deals game link</label>
+                <div class="search-field search-field-large">
+                    {{ icon('search', 20) }}
+                    <input id="search" name="search" value="{{ search }}" maxlength="180"
+                           placeholder="elden-ring or https://gg.deals/game/elden-ring/" required>
+                    <button type="submit" class="button-small">Look up</button>
+                </div>
+                <p class="field-hint">
+                    If searching by name doesn't work, paste the game's page link from
+                    <a href="https://gg.deals/" target="_blank" rel="noopener noreferrer">GG.deals</a>.
+                </p>
+            </form>
+        </section>
+
         {% if error %}
-
-            <p role="alert">{{ error }}</p>
-
+            <div class="notice notice-error notice-with-icon dash-section" role="alert">{{ icon('info', 18) }}<span>{{ error }}</span></div>
         {% endif %}
-
-        <!-- Game Results -->
 
         {% if game %}
 
-        <h2>Game Result</h2>
+        <!-- Result -->
+        <section class="panel dash-section game-result" aria-labelledby="game-title">
+            <div class="game-summary">
+                <span class="game-art" aria-hidden="true">{{ icon('gift', 36) }}</span>
+                <div>
+                    <span class="product-category">Games</span>
+                    <h2 id="game-title">{{ game.name }}</h2>
+                    <a href="{{ game.url }}" target="_blank" rel="noopener noreferrer" class="text-link">
+                        View on GG.deals {{ icon('arrow-right', 14) }}
+                    </a>
+                </div>
+            </div>
 
-        <table class="catalog-table">
+            <div class="game-price">
+                <div>
+                    <span>Current US retail</span>
+                    <strong>{% if game.price_usd is not none %}${{ '%.2f' | format(game.price_usd) }}{% else %}Unavailable{% endif %}</strong>
+                </div>
+                <span class="game-price-arrow" aria-hidden="true">{{ icon('arrow-right', 20) }}</span>
+                <div>
+                    <span>Reward price</span>
+                    <strong class="is-points">{% if game.point_cost is not none %}{{ '{:,}'.format(game.point_cost) }} pts{% else %}—{% endif %}</strong>
+                </div>
+            </div>
 
-            <thead>
+            {% if game.point_cost is not none %}
+            <form method="POST" action="/sponsor/catalog/ggdeals" class="game-add-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="game_slug" value="{{ game.slug }}">
 
-                <tr>
-                    <th>Game</th>
-                    <th>Current US Retail Price</th>
-                    <th>Reward Points</th>
-                    <th>Action</th>
-                </tr>
+                <div class="form-group">
+                    <label for="gg-rating">Content rating</label>
+                    <select id="gg-rating" name="content_rating" required aria-describedby="gg-rating-hint">
+                        <option value="" selected disabled>Choose a rating</option>
+                        <option value="G">G</option>
+                        <option value="PG">PG</option>
+                    </select>
+                </div>
 
-            </thead>
+                <label class="check-label">
+                    <input type="checkbox" name="auto_managed" checked> Apply my automatic catalog rules
+                </label>
 
-            <tbody>
+                <button type="submit" class="button-full">{{ icon('gift', 18) }} Add to my catalog</button>
 
-                <tr>
+                <p id="gg-rating-hint" class="field-hint">
+                    GG.deals doesn't provide age ratings. Check the game's rating yourself before choosing G or PG.
+                </p>
+            </form>
+            {% else %}
+                <div class="notice notice-warning notice-with-icon" role="status">
+                    {{ icon('info', 18) }}<span>This game can't be added because GG.deals has no current retail price for it.</span>
+                </div>
+            {% endif %}
+        </section>
 
-                    <td>
-                        <a
-                            href="{{ game.url }}"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {{ game.name }}
-                        </a>
-                    </td>
+        <ul class="detail-notes dash-section">
+            <li>{{ icon('info', 16) }} The price is checked again when you add the reward. Saved reward prices don't update automatically.</li>
+            <li>{{ icon('package', 16) }} You're responsible for fulfilling rewards that drivers order.</li>
+        </ul>
 
-                    <td>
+        {% elif not error %}
 
-                        {% if game.price_usd is not none %}
-
-                            ${{ '%.2f'|format(game.price_usd) }} USD
-
-                        {% else %}
-
-                            Unavailable
-
-                        {% endif %}
-
-                    </td>
-
-                    <td>
-
-                        {% if game.point_cost is not none %}
-
-                            {{ game.point_cost }} points
-
-                        {% else %}
-
-                            Not available
-
-                        {% endif %}
-
-                    </td>
-
-                    <td>
-
-                        {% if game.point_cost is not none %}
-
-                        <form
-                            method="POST"
-                            action="/sponsor/catalog/ggdeals"
-                        >
-
-                            <input
-                                type="hidden"
-                                name="csrf_token"
-                                value="{{ csrf_token() }}"
-                            >
-
-                            <input
-                                type="hidden"
-                                name="game_slug"
-                                value="{{ game.slug }}"
-                            >
-                            
-                            <label for="gg-rating">
-                                Sponsor-classified suitability (G / PG)
-                            </label>
-                            
-                            <select id="gg-rating" name="content_rating" required>
-                                <option value="" selected disabled>Choose rating</option>
-                                <option value="G">G</option>
-                                <option value="PG">PG</option>
-                            </select>
-                            
-                            <label>
-                                <input type="checkbox"
-                                       name="auto_managed"
-                                       checked>
-                                Apply generation rules
-                            </label>
-                            
-                            <button type="submit">
-                                Add Reward
-                            </button>
-                        </form>
-                        {% else %}
-
-                            Cannot add without a current retail price.
-
-                        {% endif %}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <p>
-            <small>
-                Prices are checked again when adding a reward.
-                Saved reward prices do not automatically update.
-                Sponsors are responsible for fulfilling redemptions.
-                GG.deals pricing does not establish an age/content rating.
-                Verify the game's rating before selecting G or PG.
-            </small>
-        </p>
+        <!-- Before a search -->
+        <section class="panel dash-section" aria-labelledby="how-title">
+            <h2 id="how-title" class="section-label">How it works</h2>
+            <ol class="next-steps next-steps-row">
+                <li><span>1</span><div><strong>Look up a game</strong><small>Search by name or paste its GG.deals link.</small></div></li>
+                <li><span>2</span><div><strong>Check the price</strong><small>Points are set from the current US retail price.</small></div></li>
+                <li><span>3</span><div><strong>Rate and add it</strong><small>Choose G or PG and it's added to your catalog.</small></div></li>
+            </ol>
+        </section>
 
         {% endif %}
 
-        <p>
+        <p class="attribution">
             Game titles and price data provided by
-            <a href="https://gg.deals/">GG.deals</a>.
+            <a href="https://gg.deals/" target="_blank" rel="noopener noreferrer">GG.deals</a>.
         </p>
+
+        <p><a href="/dashboard#catalog" class="back-link">{{ icon('arrow-left', 16) }} Back to my catalog</a></p>
+
     </main>
 </div>
 </body>
