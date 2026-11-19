@@ -3,70 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Edit Sponsor User</title>
+  <title>Edit {{ sponsor_user.first_name }} {{ sponsor_user.last_name }} - Sponsor User</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=29">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>Edit {{ sponsor_user.first_name }} {{ sponsor_user.last_name }}</h1>
+{% set name = (sponsor_user.first_name ~ ' ' ~ sponsor_user.last_name) | trim %}
+{% set back = '/admin/sponsor-users/' ~ sponsor_user.sponsor_user_id %}
 
-      {% if error %}
-        <p class="error-message">{{ error }}</p>
-      {% endif %}
+<div class="page">
+  <main>
 
-      <form action="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}/edit" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/admin/sponsor-users">Sponsor users</a></li>
+        <li>{{ icon('chevron-right', 14) }}<a href="{{ back }}">{{ name }}</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Edit</span></li>
+      </ol>
+    </nav>
 
-        <div class="form-group">
-          <label for="first_name">First Name:</label>
-          <input type="text" id="first_name" name="first_name" maxlength="50" value="{{ values.first_name }}" required>
-        </div>
+    <section class="page-heading">
+      <div>
+        <h1>Edit {{ name }}</h1>
+        <p>Update this sponsor user's details, company, or account access.</p>
+      </div>
+    </section>
 
-        <div class="form-group">
-          <label for="last_name">Last Name:</label>
-          <input type="text" id="last_name" name="last_name" maxlength="50" value="{{ values.last_name }}" required>
-        </div>
+    <div class="form-layout">
 
-        <div class="form-group">
-          <label for="username">Username:</label>
-          <input type="text" id="username" name="username" maxlength="50" value="{{ values.username }}" required>
-        </div>
+      <section class="panel form-card" aria-labelledby="form-title">
+        <h2 id="form-title" class="visually-hidden">Sponsor user details</h2>
 
-        <div class="form-group">
-          <label for="email">Email:</label>
-          <input type="email" id="email" name="email" maxlength="100" value="{{ values.email }}" required>
-        </div>
+        {% if error %}
+          <div class="notice notice-error notice-with-icon" role="alert">{{ icon('info', 18) }}<span>{{ error }}</span></div>
+        {% endif %}
 
-        <div class="form-group">
-          <label for="sponsor_id">Company:</label>
-          <select id="sponsor_id" name="sponsor_id" required>
-            {% for sponsor in sponsors %}
-              <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id | string == values.sponsor_id %}selected{% endif %}>
-                {{ sponsor.sponsor_name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
+        <form action="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}/edit" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="form-group">
-          <label>
-            <input type="checkbox" name="account_locked" {% if values.account_locked %}checked{% endif %}>
-            Account locked
+          <h3 class="form-section-title">Details</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first_name">First name</label>
+              <input type="text" id="first_name" name="first_name" maxlength="50" value="{{ values.first_name }}" required>
+            </div>
+            <div class="form-group">
+              <label for="last_name">Last name</label>
+              <input type="text" id="last_name" name="last_name" maxlength="50" value="{{ values.last_name }}" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" maxlength="50" value="{{ values.username }}" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" maxlength="100" value="{{ values.email }}" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="sponsor_id">Company</label>
+            <select id="sponsor_id" name="sponsor_id" required>
+              {% for sponsor in sponsors %}
+                <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id | string == values.sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <h3 class="form-section-title">Account access</h3>
+          <label class="switch-row">
+            <span class="switch">
+              <input type="checkbox" name="account_locked" {% if values.account_locked %}checked{% endif %}>
+              <span class="switch-track" aria-hidden="true"></span>
+            </span>
+            <span>
+              <strong>Account locked</strong>
+              <small>A locked account can't log in until it's unlocked.</small>
+            </span>
           </label>
-        </div>
 
-        <button type="submit">Save Changes</button>
-      </form>
+          <div class="form-actions">
+            <button type="submit">{{ icon('check', 18) }} Save changes</button>
+            <a href="{{ back }}" class="button-cancel">Cancel</a>
+          </div>
+        </form>
+      </section>
 
-      <p style="text-align: center;"><a href="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}">Cancel</a></p>
-    </main>
-  </div>
+      <aside class="panel form-aside" aria-labelledby="tips-title">
+        <h2 id="tips-title">Good to know</h2>
+        <ul class="detail-notes">
+          <li>{{ icon('building', 16) }} Changing the company moves this login to the other sponsor company.</li>
+          <li>{{ icon('lock', 16) }} To give them a new password, use Reset password on their account page.</li>
+        </ul>
+      </aside>
+
+    </div>
+
+  </main>
+</div>
 </body>
 </html>

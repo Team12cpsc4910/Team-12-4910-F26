@@ -4651,3 +4651,106 @@ button.link-button.link-primary:hover {
     padding-top: 12px;
   }
 }
+
+/* ===== Admin user detail and edit pages ===== */
+.text-warning {
+  color: #fbbf24 !important;
+  font-weight: 700;
+}
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-stack .button-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button-ghost.button-ghost-full {
+  justify-content: center;
+  padding: 12px;
+  font-size: 0.95em;
+}
+
+/* On/off switch built on a real checkbox */
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.switch-row strong {
+  display: block;
+  color: #ffffff;
+}
+
+.switch-row small {
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  margin-top: 2px;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s;
+}
+
+.switch input:checked + .switch-track {
+  background: #ef4444;
+}
+
+.switch input:checked + .switch-track::after {
+  transform: translateX(20px);
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.form-card .field-hint .icon {
+  display: inline-block;
+  vertical-align: -2px;
+}

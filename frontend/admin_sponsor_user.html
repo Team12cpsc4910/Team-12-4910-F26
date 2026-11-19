@@ -3,54 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sponsor User</title>
+  <title>{{ sponsor_user.first_name }} {{ sponsor_user.last_name }} - Sponsor User</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=29">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>{{ sponsor_user.first_name }} {{ sponsor_user.last_name }}</h1>
+{% set user = sponsor_user %}
+{% set name = (user.first_name ~ ' ' ~ user.last_name) | trim %}
 
-      {% if updated %}
-        <p class="success-message">Sponsor user updated.</p>
-      {% endif %}      
+<div class="page">
+  <main>
 
-      <dl>
-        <dt>Company</dt>
-        <dd>{{ sponsor_user.sponsor_name }}</dd>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/admin/sponsor-users">Sponsor users</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>{{ name }}</span></li>
+      </ol>
+    </nav>
 
-        <dt>Username</dt>
-        <dd>{{ sponsor_user.username }}</dd>
+    <section class="page-heading">
+      <div class="heading-with-avatar">
+        <span class="app-icon avatar-initials avatar-md {{ 'is-muted' if user.account_locked else 'is-approved' }}" aria-hidden="true">
+          {{ ((user.first_name or '?')[0] ~ (user.last_name or '')[:1]) | upper }}
+        </span>
+        <div>
+          <h1 class="order-title">
+            {{ name }}
+            {% if user.account_locked %}<span class="status dropped">{{ icon('lock', 12) }} Locked</span>{% else %}<span class="status approved">Active</span>{% endif %}
+          </h1>
+          <p>@{{ user.username }} &middot; Sponsor user at {{ user.sponsor_name }}</p>
+        </div>
+      </div>
+    </section>
 
-        <dt>Email</dt>
-        <dd>{{ sponsor_user.email }}</dd>
+    {% if updated %}
+      <div class="notice notice-success notice-with-icon" role="status">{{ icon('check', 18) }}<span>Sponsor user updated.</span></div>
+    {% endif %}
 
-        <dt>Status</dt>
-        <dd>
-          {% if sponsor_user.account_locked %}
-            <span class="status dropped">Locked</span>
-          {% else %}
-            <span class="status approved">Active</span>
-          {% endif %}
-        </dd>
+    <div class="form-layout">
 
-        <dt>Failed Logins</dt>
-        <dd>{{ sponsor_user.failed_logins }}</dd>
-      </dl>
-      <form action="/admin/sponsor-users/{{ sponsor_user.sponsor_user_id }}/edit" method="get">
-        <button type="submit">Edit Sponsor User</button>
-      </form>      
-      <form action="/admin/users/{{ sponsor_user.user_id }}/reset-password" method="get">
-        <button type="submit">Reset Password</button>
-      </form>
-      <p style="text-align: center;"><a href="/admin/sponsor-users">Back to Sponsor Users</a></p>
-    </main>
-  </div>
+      <section class="panel" aria-labelledby="details-title">
+        <div class="panel-heading">
+          <h2 id="details-title">{{ icon('user', 20) }} Account details</h2>
+        </div>
+        <dl class="detail-list">
+          <div><dt>Name</dt><dd>{{ name }}</dd></div>
+          <div><dt>Company</dt><dd>{{ user.sponsor_name }}</dd></div>
+          <div><dt>Username</dt><dd>@{{ user.username }}</dd></div>
+          <div><dt>Email</dt><dd>{% if user.email %}<a href="mailto:{{ user.email }}">{{ user.email }}</a>{% else %}—{% endif %}</dd></div>
+          <div>
+            <dt>Status</dt>
+            <dd>{% if user.account_locked %}Locked (can't log in){% else %}Active{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Failed logins</dt>
+            <dd class="{{ 'text-warning' if user.failed_logins }}">{{ user.failed_logins or 0 }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <aside class="panel form-aside" aria-labelledby="actions-title">
+        <h2 id="actions-title">Manage account</h2>
+        <div class="action-stack">
+          <a href="/admin/sponsor-users/{{ user.sponsor_user_id }}/edit" class="button-link">{{ icon('user', 18) }} Edit details</a>
+          <a href="/admin/users/{{ user.user_id }}/reset-password" class="button-ghost button-ghost-full">{{ icon('lock', 16) }} Reset password</a>
+        </div>
+        <p class="field-hint">Lock or unlock the account from Edit details.</p>
+      </aside>
+
+    </div>
+
+    <p><a href="/admin/sponsor-users" class="back-link">{{ icon('arrow-left', 16) }} Back to sponsor users</a></p>
+
+  </main>
+</div>
 </body>
 </html>
