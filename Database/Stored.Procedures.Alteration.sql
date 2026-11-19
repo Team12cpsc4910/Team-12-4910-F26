@@ -72,4 +72,28 @@ BEGIN
     COMMIT;
 END //
 
+CREATE PROCEDURE AwardPointsToGoodStandingDrivers()
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    UPDATE DriverUser du
+    JOIN PointAwardConfig c
+      ON du.sponsor_id = c.sponsor_id
+    SET du.points = du.points + c.points_per_award
+    WHERE du.inGoodStanding = TRUE
+      AND c.enabled = TRUE;
+
+    UPDATE PointAwardConfig
+       SET last_run_at = CURRENT_TIMESTAMP
+     WHERE enabled = TRUE;
+
+    COMMIT;
+END //
+
 DELIMITER ;
