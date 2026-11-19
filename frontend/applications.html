@@ -7,132 +7,137 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=19">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      {% if session.get('impersonator') %}
-        <div class="success-message" style="text-align: center;">
-          Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).
-          <form action="/admin/stop-assuming" method="POST" style="margin-top: 8px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Return to Admin</button>
-          </form>
+{# Dates come from the database as datetimes; anything else is shown as-is #}
+{% macro day(value) -%}
+  {% if value and value.strftime is defined %}{{ value.strftime('%b %d, %Y') }}{% else %}{{ value or '—' }}{% endif %}
+{%- endmacro %}
+
+{% set current = approved | selectattr('is_current_sponsor') | first %}
+
+<div class="page">
+  <main>
+
+    {% if session.get('impersonator') %}
+      <div class="notice notice-info">
+        <span>Viewing as driver <strong>{{ session['username'] }}</strong> (signed in as admin {{ session['impersonator']['username'] }}).</span>
+        <form action="/admin/stop-assuming" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="button-small">Return to Admin</button>
+        </form>
+      </div>
+    {% endif %}
+
+    <section class="page-heading">
+      <div>
+        <h1>Applications</h1>
+        <p>Apply to a sponsor company to join their incentive program.</p>
+      </div>
+      <a href="/applications/new" class="button-link button-inline">{{ icon('file', 18) }} Start application</a>
+    </section>
+
+    {% if current %}
+      <div class="notice notice-success notice-with-icon" role="status">
+        {{ icon('badge-check', 18) }}
+        <span>You're in <strong>{{ current.sponsor_name }}</strong>'s program.</span>
+        <a href="/driver/catalog" class="notice-action">View rewards catalog {{ icon('arrow-right', 16) }}</a>
+      </div>
+    {% endif %}
+
+    <div class="app-sections">
+
+      <!-- Waiting on a sponsor -->
+      <section class="panel" aria-labelledby="pending-title">
+        <div class="panel-heading">
+          <h2 id="pending-title">Pending <span class="count-pill">{{ pending | length }}</span></h2>
         </div>
-      {% endif %}
-      <h1 style="text-align: center;">Applications</h1>
-      <p style="text-align: center;">Apply to a sponsor company to join their incentive program.</p>
-
-      <form action="/applications/new" method="get">
-        <button type="submit">Start Application</button>
-      </form>
-
-      <h2>Pending Applications</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Sponsor</th>
-            <th>Submitted</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if pending %}
+        {% if pending %}
+          <ul class="app-list">
             {% for app in pending %}
-            <tr>
-              <td>{{ app.sponsor_name }}</td>
-              <td>{{ app.submitted or '—' }}</td>
-              <td><span class="status pending">{{ app.state | capitalize }}</span></td>
-            </tr>
+            <li>
+              <span class="app-icon">{{ icon('building', 20) }}</span>
+              <div class="app-info">
+                <strong>{{ app.sponsor_name }}</strong>
+                <small>Submitted {{ day(app.submitted) }} &middot; Waiting for the sponsor to review</small>
+              </div>
+              <span class="status pending">{{ app.state | capitalize }}</span>
+            </li>
             {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="3" class="catalog-empty">You haven't applied to any sponsors yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-      <h2>Approved Applications</h2>
-      <table class="catalog-table">
-          <thead>
-              <tr>
-                  <th>Sponsor</th>
-                  <th>Reviewed</th>
-                  <th>Status</th>
-                  <th>Catalog</th>
-              </tr>
-          </thead>
-      
-          <tbody>
-              {% if approved %}
-      
-                  {% for app in approved %}
-                  <tr>
-                      <td>{{ app.sponsor_name }}</td>
-      
-                      <td>{{ app.decided or '—' }}</td>
-      
-                      <td>
-                          <span class="status approved">
-                              {{ app.state | capitalize }}
-                          </span>
-                      </td>
-      
-                      <td>
-                          {% if app.is_current_sponsor %}
-                              <a href="/driver/catalog">
-                                  View My Sponsor's Catalog
-                              </a>
-                          {% else %}
-                              Previous sponsor
-                          {% endif %}
-                      </td>
-                  </tr>
-                  {% endfor %}
-      
-              {% else %}
-      
-                  <tr>
-                      <td colspan="4">
-                          No approved applications yet.
-                      </td>
-                  </tr>
-      
-              {% endif %}
-          </tbody>
-      </table>
-      <h2>Rejected Applications</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Sponsor</th>
-            <th>Rejected</th>
-            <th>Status</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if rejected %}
+          </ul>
+        {% else %}
+          <p class="empty-state">
+            You haven't applied to any sponsors yet.
+            <a href="/applications/new">Start an application</a>
+          </p>
+        {% endif %}
+      </section>
+
+      <!-- Accepted -->
+      <section class="panel" aria-labelledby="approved-title">
+        <div class="panel-heading">
+          <h2 id="approved-title">Approved <span class="count-pill">{{ approved | length }}</span></h2>
+        </div>
+        {% if approved %}
+          <ul class="app-list">
+            {% for app in approved %}
+            <li>
+              <span class="app-icon is-approved">{{ icon('building', 20) }}</span>
+              <div class="app-info">
+                <strong>{{ app.sponsor_name }}</strong>
+                <small>
+                  Approved {{ day(app.decided) }} &middot;
+                  {% if app.is_current_sponsor %}Your current sponsor{% else %}Previous sponsor{% endif %}
+                </small>
+              </div>
+              <div class="app-side">
+                <span class="status approved">{{ app.state | capitalize }}</span>
+                {% if app.is_current_sponsor %}
+                  <a href="/driver/catalog" class="text-link">View catalog</a>
+                {% endif %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty-state">No approved applications yet.</p>
+        {% endif %}
+      </section>
+
+      <!-- Turned down -->
+      <section class="panel" aria-labelledby="rejected-title">
+        <div class="panel-heading">
+          <h2 id="rejected-title">Rejected <span class="count-pill">{{ rejected | length }}</span></h2>
+        </div>
+        {% if rejected %}
+          <ul class="app-list">
             {% for app in rejected %}
-            <tr>
-              <td>{{ app.sponsor_name }}</td>
-              <td>{{ app.decided or '—' }}</td>
-              <td><span class="status rejected">{{ app.state | capitalize }}</span></td>
-              <td>{{ app.reason }}</td>
-            </tr>
+            <li class="has-reason">
+              <span class="app-icon is-rejected">{{ icon('building', 20) }}</span>
+              <div class="app-info">
+                <strong>{{ app.sponsor_name }}</strong>
+                <small>Rejected {{ day(app.decided) }}</small>
+                {% if app.reason %}
+                  <p class="app-reason"><span>Reason:</span> {{ app.reason }}</p>
+                {% endif %}
+              </div>
+              <span class="status rejected">{{ app.state | capitalize }}</span>
+            </li>
             {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No rejected applications.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>      
-    </main>
-  </div>
+          </ul>
+        {% else %}
+          <p class="empty-state">No rejected applications.</p>
+        {% endif %}
+      </section>
+
+    </div>
+
+  </main>
+</div>
 </body>
 </html>
