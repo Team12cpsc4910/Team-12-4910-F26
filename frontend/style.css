@@ -2782,3 +2782,118 @@ button.link-button:hover {
     width: 16px;
   }
 }
+
+/* ===== Order status page (driver_order.html) ===== */
+.page-heading h1.order-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.order-title .status {
+  font-size: 0.4em;
+}
+
+.order-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.order-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Vertical tracking timeline */
+.timeline {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.timeline li {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 24px;
+  color: #64748b;
+}
+
+.timeline li:last-child {
+  padding-bottom: 0;
+}
+
+/* Line connecting each step to the next */
+.timeline li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 30px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.timeline li.done:not(:last-child)::after {
+  background: #00e676;
+}
+
+.timeline-dot {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-sizing: border-box;
+}
+
+.timeline li.done .timeline-dot {
+  border-color: transparent;
+  color: #0f172a;
+  background: #00e676;
+}
+
+.timeline li.current .timeline-dot {
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.15);
+}
+
+.timeline strong {
+  display: block;
+  margin-top: 3px;
+  color: #94a3b8;
+}
+
+.timeline li.done strong,
+.timeline li.current strong {
+  color: #ffffff;
+}
+
+.timeline small {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 0.88em;
+}
+
+.cart-summary dd .status {
+  margin: 0;
+}
+
+.cart-summary dl div:has(.status) {
+  align-items: center;
+}
+
+.cart-summary .back-link {
+  justify-content: center;
+  margin-top: 0;
+}

@@ -197,10 +197,12 @@ def driver_order(redemption_id):
             cur.execute("""
                 SELECT r.redemption_id, r.product_id, r.product_name, r.points_spent,
                        r.status, r.redeemed_at, r.fulfilled_at,
-                       s.sponsor_name
+                       s.sponsor_name, p.image_url, p.category
                 FROM RewardRedemption r
                 JOIN DriverUser d ON r.driver_id = d.driver_id
                 LEFT JOIN Sponsor s ON r.sponsor_id = s.sponsor_id
+                -- Picture and category only; the reward may have been removed since the order
+                LEFT JOIN ProductCatalog p ON r.product_id = p.product_id
                 WHERE r.redemption_id = %s AND d.user_id = %s
             """, (redemption_id, g.user['user_id']))
             order = cur.fetchone()
