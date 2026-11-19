@@ -1,0 +1,11 @@
+DELIMITER //
+
+CREATE EVENT ev_award_points_good_standing
+ON SCHEDULE EVERY 1 DAY
+STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 2 HOUR)
+DO
+BEGIN
+    CALL AwardPointsToGoodStandingDrivers();
+END //
+
+DELIMITER ;

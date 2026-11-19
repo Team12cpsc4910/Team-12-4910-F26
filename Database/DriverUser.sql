@@ -6,6 +6,7 @@ CREATE TABLE Team12_DB.DriverUser (
     application_status VARCHAR(20) NOT NULL DEFAULT 'Not Applied',
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
+    inGoodStanding BOOLEAN NOT NULL DEFAULT TRUE,
 
     PRIMARY KEY (driver_id),
     FOREIGN KEY (user_id) REFERENCES Team12_DB.UserAccount(user_id),
