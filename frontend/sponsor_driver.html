@@ -3,195 +3,235 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Driver Profile</title>
+  <title>{{ driver.first_name }} {{ driver.last_name }} | Driver Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=23">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1>{{ driver.first_name }} {{ driver.last_name }}</h1>
+{% set name = (driver.first_name ~ ' ' ~ driver.last_name) | trim %}
+{% set approved = driver.application_status == 'Approved' %}
+{% set info = info_values or {} %}
 
-      {% if dropped %}
-        <p class="success-message">{{ driver.first_name }} has been dropped from your program and no longer has access to your catalog.</p>
-      {% endif %}
-
-      <h2>Profile</h2>
-      <dl>
-        <dt>Username</dt>
-        <dd>{{ driver.username }}</dd>
-
-        <dt>Email</dt>
-        <dd>{{ driver.email }}</dd>
-
-        <dt>Sponsor</dt>
-        <dd>{{ driver.sponsor_name }}</dd>
-      </dl>
-
-      <h2>Edit Info</h2>
-      {% if info_updated %}
-        <p class="success-message">Driver info updated.</p>
-      {% endif %}
-      {% if info_error %}
-        <p class="error-message">{{ info_error }}</p>
-      {% endif %}
-
-      {% set info = info_values or {} %}
-      <form action="/sponsor/drivers/{{ driver.driver_id }}/info" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <div class="form-group">
-          <label for="first_name">First Name:</label>
-          <input type="text" id="first_name" name="first_name" maxlength="50"
-                 value="{{ info.get('first_name', driver.first_name) }}" required>
-        </div>
-
-        <div class="form-group">
-          <label for="last_name">Last Name:</label>
-          <input type="text" id="last_name" name="last_name" maxlength="50"
-                 value="{{ info.get('last_name', driver.last_name) }}" required>
-        </div>
-
-        <div class="form-group">
-          <label for="email">Email:</label>
-          <input type="email" id="email" name="email" maxlength="100"
-                 value="{{ info.get('email', driver.email) }}" required>
-        </div>
-
-        <button type="submit">Save Info</button>
-      </form>
-
-      <h2>Status</h2>
-      <dl>
-        <dt>Application Status</dt>
-        <dd><span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span></dd>
-
-        <dt>Account</dt>
-        <dd>
-          {% if driver.account_locked %}
-            <span class="status out-of-stock">Locked</span>
-          {% else %}
-            <span class="status in-stock">Active</span>
-          {% endif %}
-        </dd>
-
-        <dt>Points Balance</dt>
-        <dd>{{ driver.points }} Points</dd>
-      </dl>
-
-      <h2>Add Points</h2>
-      {% if points_added %}
-        <p class="success-message">Added {{ points_added }} points.</p>
-      {% endif %}
-      {% if points_error and error_form == 'add' %}
-        <p class="error-message">{{ points_error }}</p>
-      {% endif %}
-
-      {% if driver.application_status == 'Approved' %}
-      <form action="/sponsor/drivers/{{ driver.driver_id }}/points" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <div class="form-group">
-          <label for="points">Points to Add:</label>
-          <input type="number" id="points" name="points" min="1" max="{{ max_points }}" step="1"
-                 value="{{ values.get('points', '') if error_form == 'add' else '' }}" required>
-        </div>
-
-        <div class="form-group">
-          <label for="reason">Reason (required):</label>
-          <textarea id="reason" name="reason" rows="3" maxlength="{{ max_reason }}" required>{{ values.get('reason', '') if error_form == 'add' else '' }}</textarea>
-        </div>
-
-        <button type="submit">Add Points</button>
-      </form>
-      {% else %}
-        <p class="catalog-empty">Points can be added once this driver's application is approved.</p>
-      {% endif %}
-
-      <h2>Deduct Points</h2>
-      {% if points_deducted %}
-        <p class="success-message">Deducted {{ points_deducted }} points.</p>
-      {% endif %}
-      {% if points_error and error_form == 'deduct' %}
-        <p class="error-message">{{ points_error }}</p>
-      {% endif %}
-
-      {% if driver.application_status == 'Approved' and driver.points > 0 %}
-      <form action="/sponsor/drivers/{{ driver.driver_id }}/points/deduct" method="POST" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-        <div class="form-group">
-          <label for="deduct_points">Points to Deduct:</label>
-          <input type="number" id="deduct_points" name="points" min="1" max="{{ [max_points, driver.points] | min }}" step="1"
-                 value="{{ values.get('points', '') if error_form == 'deduct' else '' }}" required>
-        </div>
-
-        <div class="form-group">
-          <label for="deduct_reason">Reason (required):</label>
-          <textarea id="deduct_reason" name="reason" rows="3" maxlength="{{ max_reason }}" required>{{ values.get('reason', '') if error_form == 'deduct' else '' }}</textarea>
-        </div>
-
-        <button type="submit" class="danger">Deduct Points</button>
-      </form>
-      {% elif driver.application_status == 'Approved' %}
-        <p class="catalog-empty">This driver has no points to deduct.</p>
-      {% else %}
-        <p class="catalog-empty">Points can be deducted once this driver's application is approved.</p>
-      {% endif %}
-
-      <h2>Point History</h2>
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Change</th>
-            <th>Changed By</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if history %}
-            {% for row in history %}
-            <tr>
-              <td>{{ row.datetime }}</td>
-              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
-              <td>{{ row.changed_by }}</td>
-              <td>{{ row.reason }}</td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No point history for this driver yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-
-      <h2>Program Membership</h2>
-      {% if drop_error %}
-        <p class="error-message">{{ drop_error }}</p>
-      {% endif %}
-
-      {% if driver.application_status == 'Approved' %}
-      <p>Dropping this driver removes their access to your catalog and stops point changes. Their account, points balance, and history are kept, and they can apply to your program again later.</p>
-      <form action="/sponsor/drivers/{{ driver.driver_id }}/drop" method="POST" class="login-form"
-            onsubmit="return confirm('Drop this driver from your program?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="danger">Drop Driver</button>
-      </form>
-      {% elif driver.application_status == 'Dropped' %}
-        <p class="catalog-empty">This driver has been dropped from your program.</p>
-      {% else %}
-        <p class="catalog-empty">Only approved drivers can be dropped from your program.</p>
-      {% endif %}
-
-      <p style="text-align: center;"><a href="/sponsor/drivers">Back to Drivers</a></p>
-    </main>
+{% macro notice(kind, text) -%}
+  <div class="notice notice-{{ kind }} notice-with-icon" role="{{ 'alert' if kind == 'error' else 'status' }}">
+    {{ icon('info' if kind == 'error' else 'check', 18) }}<span>{{ text }}</span>
   </div>
+{%- endmacro %}
+
+<div class="page">
+  <main>
+
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="/sponsor/drivers">Drivers</a></li>
+        <li aria-current="page">{{ icon('chevron-right', 14) }}<span>{{ name }}</span></li>
+      </ol>
+    </nav>
+
+    <section class="page-heading">
+      <div class="heading-with-avatar">
+        <span class="app-icon avatar-initials avatar-md {{ 'is-approved' if approved else 'is-muted' }}" aria-hidden="true">
+          {{ ((driver.first_name or '?')[0] ~ (driver.last_name or '')[:1]) | upper }}
+        </span>
+        <div>
+          <h1 class="order-title">
+            {{ name }}
+            <span class="status {{ 'approved' if approved else 'dropped' }}">{{ 'Active' if approved else driver.application_status }}</span>
+          </h1>
+          <p>@{{ driver.username }} &middot; {{ driver.sponsor_name }}</p>
+        </div>
+      </div>
+    </section>
+
+    {% if dropped %}{{ notice('success', driver.first_name ~ ' has been dropped from your program and no longer has access to your catalog.') }}{% endif %}
+    {% if info_updated %}{{ notice('success', 'Driver info updated.') }}{% endif %}
+    {% if points_added %}{{ notice('success', 'Added ' ~ '{:,}'.format(points_added | int) ~ ' points.') }}{% endif %}
+    {% if points_deducted %}{{ notice('success', 'Deducted ' ~ '{:,}'.format(points_deducted | int) ~ ' points.') }}{% endif %}
+
+    <section class="stat-grid stat-grid-3" aria-label="Driver summary">
+      <div class="stat-card stat-card-primary">
+        <span class="stat-icon">{{ icon('coins', 22) }}</span>
+        <span class="stat-label">Points balance</span>
+        <strong class="stat-value">{{ '{:,}'.format(driver.points) }}</strong>
+        {% if approved %}<a href="#adjust-points" class="stat-link">Adjust points {{ icon('arrow-right', 16) }}</a>{% endif %}
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">{{ icon('lock' if driver.account_locked else 'badge-check', 22) }}</span>
+        <span class="stat-label">Account</span>
+        <strong class="stat-value stat-value-small">
+          {% if driver.account_locked %}<span class="status out-of-stock">Locked</span>{% else %}<span class="status in-stock">Active</span>{% endif %}
+        </strong>
+        <span class="stat-link">{{ "Can't log in right now" if driver.account_locked else 'Can log in' }}</span>
+      </div>
+      <a class="stat-card" href="#history">
+        <span class="stat-icon">{{ icon('activity', 22) }}</span>
+        <span class="stat-label">Point changes</span>
+        <strong class="stat-value">{{ history | length }}</strong>
+        <span class="stat-link">View history {{ icon('arrow-right', 16) }}</span>
+      </a>
+    </section>
+
+    <div class="driver-layout">
+
+      <div class="order-main">
+
+        <!-- Add / deduct -->
+        <section class="panel" id="adjust-points" aria-labelledby="adjust-title">
+          <div class="panel-heading">
+            <h2 id="adjust-title">{{ icon('coins', 20) }} Adjust points</h2>
+          </div>
+
+          {% if approved %}
+          <div class="points-forms">
+
+            <form action="/sponsor/drivers/{{ driver.driver_id }}/points" method="POST" class="points-form is-add">
+              <h3>{{ icon('arrow-right', 16) }} Add points</h3>
+              {% if points_error and error_form == 'add' %}{{ notice('error', points_error) }}{% endif %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="form-group">
+                <label for="points">Points to add</label>
+                <input type="number" id="points" name="points" min="1" max="{{ max_points }}" step="1"
+                       value="{{ values.get('points', '') if error_form == 'add' else '' }}" required>
+              </div>
+              <div class="form-group">
+                <label for="reason">Reason</label>
+                <textarea id="reason" name="reason" rows="3" maxlength="{{ max_reason }}" required
+                          placeholder="e.g. Safe driving week">{{ values.get('reason', '') if error_form == 'add' else '' }}</textarea>
+              </div>
+              <button type="submit" class="button-full">Add points</button>
+            </form>
+
+            <form action="/sponsor/drivers/{{ driver.driver_id }}/points/deduct" method="POST" class="points-form is-deduct">
+              <h3>{{ icon('arrow-left', 16) }} Deduct points</h3>
+              {% if points_error and error_form == 'deduct' %}{{ notice('error', points_error) }}{% endif %}
+              {% if driver.points > 0 %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                  <label for="deduct_points">Points to deduct <small>(max {{ '{:,}'.format([max_points, driver.points] | min) }})</small></label>
+                  <input type="number" id="deduct_points" name="points" min="1" max="{{ [max_points, driver.points] | min }}" step="1"
+                         value="{{ values.get('points', '') if error_form == 'deduct' else '' }}" required>
+                </div>
+                <div class="form-group">
+                  <label for="deduct_reason">Reason</label>
+                  <textarea id="deduct_reason" name="reason" rows="3" maxlength="{{ max_reason }}" required
+                            placeholder="e.g. Speeding violation">{{ values.get('reason', '') if error_form == 'deduct' else '' }}</textarea>
+                </div>
+                <button type="submit" class="button-danger-outline">Deduct points</button>
+              {% else %}
+                <p class="empty-state">This driver has no points to deduct.</p>
+              {% endif %}
+            </form>
+
+          </div>
+          <p class="field-hint">Every change is recorded in the point history with your name and the reason. The driver can see it.</p>
+          {% else %}
+            <p class="empty-state">Points can only be changed for drivers who are active in your program.</p>
+          {% endif %}
+        </section>
+
+        <!-- History -->
+        <section class="panel" id="history" aria-labelledby="history-title">
+          <div class="panel-heading">
+            <h2 id="history-title">{{ icon('activity', 20) }} Point history</h2>
+          </div>
+          {% if history %}
+            <div class="table-scroll">
+              <table class="catalog-table report-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th class="num">Change</th>
+                    <th>Changed by</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in history %}
+                  <tr>
+                    <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') if row.datetime and row.datetime.strftime is defined else row.datetime }}</td>
+                    <td class="num {{ 'points-up' if row.points_change > 0 else 'points-down' }}">{{ '+' if row.points_change > 0 }}{{ '{:,}'.format(row.points_change) }}</td>
+                    <td>{{ row.changed_by }}</td>
+                    <td>{{ row.reason }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="empty-state">No point history for this driver yet.</p>
+          {% endif %}
+        </section>
+
+      </div>
+
+      <div class="order-main">
+
+        <!-- Edit info -->
+        <section class="panel form-card" aria-labelledby="info-title">
+          <div class="panel-heading">
+            <h2 id="info-title">{{ icon('user', 20) }} Driver info</h2>
+          </div>
+          {% if info_error %}{{ notice('error', info_error) }}{% endif %}
+          <form action="/sponsor/drivers/{{ driver.driver_id }}/info" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+              <label for="first_name">First name</label>
+              <input type="text" id="first_name" name="first_name" maxlength="50"
+                     value="{{ info.get('first_name', driver.first_name) }}" required>
+            </div>
+            <div class="form-group">
+              <label for="last_name">Last name</label>
+              <input type="text" id="last_name" name="last_name" maxlength="50"
+                     value="{{ info.get('last_name', driver.last_name) }}" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" maxlength="100"
+                     value="{{ info.get('email', driver.email) }}" required>
+            </div>
+            <p class="field-hint">Username: <strong>{{ driver.username }}</strong> (can't be changed)</p>
+            <div class="form-actions">
+              <button type="submit">{{ icon('check', 18) }} Save info</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Membership -->
+        <section class="panel danger-zone" aria-labelledby="membership-title">
+          <div class="panel-heading">
+            <h2 id="membership-title">{{ icon('users', 20) }} Program membership</h2>
+          </div>
+          {% if drop_error %}{{ notice('error', drop_error) }}{% endif %}
+
+          {% if approved %}
+            <p>
+              Dropping this driver removes their access to your catalog and stops point changes.
+              Their account, points balance, and history are kept, and they can apply to your program again later.
+            </p>
+            <form action="/sponsor/drivers/{{ driver.driver_id }}/drop" method="POST"
+                  onsubmit="return confirm('Drop this driver from your program?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="button-danger-outline">Drop driver</button>
+            </form>
+          {% elif driver.application_status == 'Dropped' %}
+            <p class="empty-state">This driver has been dropped from your program.</p>
+          {% else %}
+            <p class="empty-state">Only approved drivers can be dropped from your program.</p>
+          {% endif %}
+        </section>
+
+      </div>
+    </div>
+
+    <p><a href="/sponsor/drivers" class="back-link">{{ icon('arrow-left', 16) }} Back to drivers</a></p>
+
+  </main>
+</div>
 </body>
 </html>

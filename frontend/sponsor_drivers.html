@@ -7,52 +7,119 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=23">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1 style="text-align: center;">My Drivers</h1>
-      <p style="text-align: center;">Drivers in your incentive program. Select a driver to view their profile.</p>
+{% set active = drivers | selectattr('application_status', 'equalto', 'Approved') | list %}
+{% set dropped = drivers | selectattr('application_status', 'equalto', 'Dropped') | list %}
 
-      {% if added %}
-        <p class="success-message">Driver added. They can now log in with the username and password you set.</p>
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>My drivers</h1>
+        <p>Drivers in your incentive program. Select a driver to manage their points and details.</p>
+      </div>
+      <a href="/sponsor/drivers/new" class="button-link button-inline">{{ icon('user-plus', 18) }} Add driver</a>
+    </section>
+
+    {% if added %}
+      <div class="notice notice-success notice-with-icon" role="status">
+        {{ icon('check', 18) }}<span>Driver added. They can now log in with the username and password you set.</span>
+      </div>
+    {% endif %}
+
+    <section class="panel" aria-labelledby="drivers-title">
+      <div class="panel-heading">
+        <h2 id="drivers-title">
+          {{ icon('users', 20) }} Drivers
+          <span class="count-pill">{{ active | length }} active</span>
+          {% if dropped %}<span class="count-pill">{{ dropped | length }} dropped</span>{% endif %}
+        </h2>
+      </div>
+
+      {% if drivers %}
+        <div class="filter-bar">
+          <div class="search-field">
+            <label for="driver-search" class="visually-hidden">Search drivers</label>
+            {{ icon('search', 18) }}
+            <input type="search" id="driver-search" placeholder="Search by name" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="catalog-table report-table people-table">
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th class="num">Points</th>
+                <th>Status</th>
+                <th><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="driver-rows">
+              {% for driver in drivers %}
+              {% set is_active = driver.application_status == 'Approved' %}
+              <tr data-name="{{ (driver.first_name ~ ' ' ~ driver.last_name) | lower }}">
+                <td>
+                  <a href="/sponsor/drivers/{{ driver.driver_id }}" class="person-cell">
+                    <span class="app-icon avatar-initials {{ 'is-approved' if is_active else 'is-muted' }}" aria-hidden="true">
+                      {{ ((driver.first_name or '?')[0] ~ (driver.last_name or '')[:1]) | upper }}
+                    </span>
+                    <strong>{{ driver.first_name }} {{ driver.last_name }}</strong>
+                  </a>
+                </td>
+                <td class="num"><strong>{{ '{:,}'.format(driver.points) }}</strong></td>
+                <td>
+                  <span class="status {{ 'approved' if is_active else 'dropped' }}">{{ 'Active' if is_active else driver.application_status }}</span>
+                </td>
+                <td class="row-link">
+                  <a href="/sponsor/drivers/{{ driver.driver_id }}" class="text-link">Manage {{ icon('arrow-right', 14) }}</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p id="no-matches" class="empty-state" hidden>No drivers match that name.</p>
+
+        <script>
+          // Filter the table as the sponsor types a name
+          (function () {
+            var search = document.getElementById('driver-search');
+            var rows = document.querySelectorAll('#driver-rows tr');
+            var none = document.getElementById('no-matches');
+            search.addEventListener('input', function () {
+              var term = search.value.trim().toLowerCase();
+              var shown = 0;
+              rows.forEach(function (row) {
+                var match = row.dataset.name.indexOf(term) !== -1;
+                row.hidden = !match;
+                if (match) shown++;
+              });
+              none.hidden = shown > 0;
+            });
+          })();
+        </script>
+      {% else %}
+        <div class="cart-empty">
+          <span class="cart-empty-icon">{{ icon('users', 36) }}</span>
+          <h2>No drivers yet</h2>
+          <p>Approve driver applications or add a driver yourself.</p>
+          <div class="heading-actions">
+            <a href="/sponsor/applications" class="button-ghost">{{ icon('file', 16) }} Review applications</a>
+            <a href="/sponsor/drivers/new" class="button-link button-inline">{{ icon('user-plus', 18) }} Add driver</a>
+          </div>
+        </div>
       {% endif %}
+    </section>
 
-      <form action="/sponsor/drivers/new" method="get">
-        <button type="submit">Add Driver</button>
-      </form>
-
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Driver</th>
-            <th>Points</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if drivers %}
-            {% for driver in drivers %}
-            <tr>
-              <td>{{ driver.first_name }} {{ driver.last_name }}</td>
-              <td>{{ driver.points }}</td>
-              <td><span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span></td>
-              <td><a href="/sponsor/drivers/{{ driver.driver_id }}">View</a></td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="catalog-empty">No drivers are in your program yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </main>
-  </div>
+  </main>
+</div>
 </body>
 </html>
