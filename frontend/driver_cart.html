@@ -5,112 +5,172 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>My Cart</title>
+    <title>Your Cart</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css?v=16">
 </head>
 
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
+{% set orderable_items = items | selectattr('available') | selectattr('point_cost', 'gt', 0) | list %}
+{% set enough_points = driver.points >= total %}
 
-<div class="container">
-
-
+<div class="page">
     <main>
 
-        <h1>My Cart</h1>
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="/driver/catalog">Rewards Catalog</a></li>
+                <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Cart</span></li>
+            </ol>
+        </nav>
+
+        <section class="page-heading">
+            <div>
+                <h1>Your cart</h1>
+                <p>
+                    {% if items %}
+                        {{ items | length }} reward{{ '' if items | length == 1 else 's' }} saved.
+                        No points are spent until you place your order.
+                    {% else %}
+                        Save rewards here to review them before you order.
+                    {% endif %}
+                </p>
+            </div>
+            <span class="points-pill">{{ icon('coins', 18) }} {{ '{:,}'.format(driver.points) }} points</span>
+        </section>
 
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <p class="{{ 'error-message' if category == 'error' else 'success-message' }}" role="status">{{ message }}</p>
+            <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }}" role="status">
+                <span>{{ message }}</span>
+            </div>
         {% endfor %}
 
-        <p style="text-align: center;">
-            Rewards you've saved to review. No points are spent until you place an order.
-        </p>
+        {% if not items %}
 
-        <div style="overflow-x: auto;">
-            <table class="catalog-table">
-                <thead>
-                    <tr>
-                        <th>Reward</th>
-                        <th>Points</th>
-                        <th>Availability</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="cart-empty">
+                <span class="cart-empty-icon">{{ icon('cart', 40) }}</span>
+                <h2>Your cart is empty</h2>
+                <p>Browse your sponsor's rewards and add the ones you want.</p>
+                <a href="/driver/catalog" class="button-link button-inline">Browse rewards</a>
+            </div>
+
+        {% else %}
+
+        <div class="cart-layout">
+
+            <!-- Items -->
+            <section class="cart-items" aria-label="Rewards in your cart">
+                <ul>
                     {% for item in items %}
-                    <tr>
-                        <td>
-                            <a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a>
-                        </td>
-                        <td>{{ item.point_cost }}</td>
-                        <td>
-                            {% if item.available %}
-                                <span class="status in-stock">In Stock</span>
+                    {% set orderable = item.available and item.point_cost > 0 %}
+                    <li class="cart-item{{ ' is-unavailable' if not orderable }}">
+
+                        <a href="/driver/catalog/{{ item.product_id }}" class="cart-thumb" tabindex="-1" aria-hidden="true">
+                            {% if item.image_url %}
+                                <img src="{{ item.image_url }}" alt="" loading="lazy">
+                            {% else %}
+                                <span class="product-placeholder">{{ icon('gift', 28) }}</span>
+                            {% endif %}
+                        </a>
+
+                        <div class="cart-item-body">
+                            {% if item.category %}<span class="product-category">{{ item.category }}</span>{% endif %}
+                            <h2 class="cart-item-title"><a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a></h2>
+                            {% if orderable %}
+                                <span class="status in-stock">In stock</span>
                             {% else %}
                                 <span class="status out-of-stock">Unavailable</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.available and item.point_cost > 0 and driver.points >= item.point_cost %}
-                            <form method="GET" action="/driver/catalog/{{ item.product_id }}/checkout">
-                                <button type="submit">Review order</button>
-                            </form>
-                            {% elif item.available %}
-                                Not Enough Points
+                                <span class="cart-item-note">Not included in your total</span>
                             {% endif %}
 
-                            <form method="POST" action="/driver/cart/{{ item.product_id }}/remove">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="danger">Remove</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="catalog-empty">
-                            Your cart is empty. Browse <a href="/driver/catalog">your sponsor's catalog</a> to add rewards.
-                        </td>
-                    </tr>
+                            <div class="cart-item-actions">
+                                {% if orderable and driver.points >= item.point_cost %}
+                                    <a href="/driver/catalog/{{ item.product_id }}/checkout" class="text-link">Buy just this</a>
+                                {% endif %}
+                                <form method="POST" action="/driver/cart/{{ item.product_id }}/remove">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="link-button" aria-label="Remove {{ item.product_name }} from cart">
+                                        {{ icon('trash', 16) }} Remove
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="cart-item-price">
+                            <strong>{{ '{:,}'.format(item.point_cost) }}</strong>
+                            <span>points</span>
+                        </div>
+                    </li>
                     {% endfor %}
-                </tbody>
-            </table>
+                </ul>
+
+                <a href="/driver/catalog" class="back-link">{{ icon('arrow-left', 16) }} Continue shopping</a>
+            </section>
+
+            <!-- Order summary -->
+            <aside class="panel cart-summary" aria-labelledby="summary-title">
+                <h2 id="summary-title">Order summary</h2>
+
+                <dl>
+                    <div>
+                        <dt>Rewards ({{ orderable_items | length }})</dt>
+                        <dd>{{ '{:,}'.format(total) }} pts</dd>
+                    </div>
+                    <div>
+                        <dt>Your balance</dt>
+                        <dd>{{ '{:,}'.format(driver.points) }} pts</dd>
+                    </div>
+                    <div class="summary-total">
+                        <dt>Balance after order</dt>
+                        <dd>
+                            {% if enough_points %}
+                                {{ '{:,}'.format(driver.points - total) }} pts
+                            {% else %}
+                                &mdash;
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+
+                {% if not orderable_items %}
+                    <p class="afford no">None of these rewards can be ordered right now.</p>
+                    <button type="button" disabled>Checkout</button>
+                {% elif not enough_points %}
+                    {% set progress = driver.points * 100 // total %}
+                    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress }}"
+                         aria-label="Points saved toward your cart total">
+                        <span style="width: {{ progress }}%"></span>
+                    </div>
+                    <p class="afford no">
+                        You need {{ '{:,}'.format(total - driver.points) }} more points to order everything.
+                        Remove a reward or buy rewards one at a time.
+                    </p>
+                    <button type="button" disabled>Checkout</button>
+                {% else %}
+                    <p class="afford yes">{{ icon('check', 16) }} You have enough points for your cart.</p>
+                    <a href="/driver/cart/checkout" class="button-link">Checkout {{ icon('arrow-right', 18) }}</a>
+                {% endif %}
+
+                <ul class="detail-notes">
+                    <li>{{ icon('shield', 16) }} You'll review your order before any points are deducted.</li>
+                    {% if orderable_items | length != items | length %}
+                        <li>{{ icon('info', 16) }} Unavailable rewards stay in your cart but aren't ordered.</li>
+                    {% endif %}
+                </ul>
+            </aside>
+
         </div>
 
-        {% if items %}
-        <h2>Summary</h2>
-        <dl>
-            <dt>Cart Total (available rewards)</dt>
-            <dd>{{ total }} Points</dd>
-
-            <dt>Your Points Balance</dt>
-            <dd>{{ driver.points }} Points</dd>
-
-            <dt>Balance If You Order Everything</dt>
-            <dd>
-                {% if driver.points >= total %}
-                    {{ driver.points - total }} Points
-                {% else %}
-                    You need {{ total - driver.points }} more points to order everything.
-                {% endif %}
-            </dd>
-        </dl>
-
-        {% if total > 0 %}
-        <form method="GET" action="/driver/cart/checkout">
-            <button type="submit">Check out cart</button>
-        </form>
-        {% endif %}
         {% endif %}
 
     </main>
-
 </div>
 
 </body>
