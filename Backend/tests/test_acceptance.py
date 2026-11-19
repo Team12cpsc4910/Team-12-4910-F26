@@ -67,8 +67,8 @@ def valid_driver_data():
         'email': 'newdriver@example.com',
         'first_name': 'New',
         'last_name': 'Driver',
-        'password': 'longpassword123',
-        'confirm_password': 'longpassword123',
+        'password': 'Longpassword123', 
+        'confirm_password': 'Longpassword123', 
         'sponsor_id': '1',
         'company_name': '',
     }
@@ -158,13 +158,28 @@ def test_public_registration_forces_driver_role(client, monkeypatch):
     assert captured['allow_new_company'] is False
 
 
-# AT-06: Driver registration rejects passwords shorter than 15 characters.
-def test_driver_password_must_be_at_least_15_characters():
+def test_driver_password_must_be_at_least_8_characters():
     data = valid_driver_data()
-    data['password'] = 'shortpassword'
-    data['confirm_password'] = 'shortpassword'
+    data['password'] = 'Short1!'
+    data['confirm_password'] = 'Short1!'
 
-    with pytest.raises(AccountValidationError, match='15'):
+    with pytest.raises(AccountValidationError, match='8'):
+        validate_account(data, 'Driver')
+
+def test_driver_password_requires_uppercase():
+    data = valid_driver_data()
+    data['password'] = 'lowercase123'
+    data['confirm_password'] = 'lowercase123'
+    
+    with pytest.raises(AccountValidationError, match='uppercase'):
+        validate_account(data, 'Driver')
+
+def test_driver_password_requires_number():
+    data = valid_driver_data()
+    data['password'] = 'NoNumbersHere'
+    data['confirm_password'] = 'NoNumbersHere'
+    
+    with pytest.raises(AccountValidationError, match='number'):
         validate_account(data, 'Driver')
 
 

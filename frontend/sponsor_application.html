@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>View Application</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
+</head>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
+  <div class="container">
+    <main>
+      <h1>Driver Application</h1>
+
+      {% if error %}
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+
+      <dl>
+        <dt>Driver</dt>
+        <dd>{{ application.first_name }} {{ application.last_name }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ application.email }}</dd>
+
+        <dt>Submitted</dt>
+        <dd>{{ application.submitted or '—' }}</dd>
+
+        <dt>Status</dt>
+        <dd><span class="status {{ application.state | lower }}">{{ application.state | capitalize }}</span></dd>
+      </dl>
+
+      <h2>Why they want to join</h2>
+      <p class="application-message">{{ application.app }}</p>
+
+      {% if application.state | lower == 'pending' %}
+      <form action="/sponsor/applications/{{ application.app_id }}/approve" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Approve Application</button>
+      </form>
+      <form action="/sponsor/applications/{{ application.app_id }}/reject" method="POST" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="reason">Reason for rejection</label>
+        <textarea id="reason" name="reason" maxlength="255" required>{{ reason or '' }}</textarea>
+        <button type="submit">Reject Application</button>
+      </form>
+      {% endif %}
+
+      <p style="text-align: center;"><a href="/sponsor/applications">Back to Applications</a></p>
+
+      <h2>Reviewed Applications</h2>
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Reviewed</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if reviewed %}
+            {% for app in reviewed %}
+            <tr>
+              <td>{{ app.first_name }} {{ app.last_name }}</td>
+              <td>{{ app.decided or '—' }}</td>
+              <td>
+                <span class="status {{ app.state | lower }}">
+                  {{ app.state | capitalize }}
+                </span>
+              </td>
+              <td>
+                <a href="/sponsor/applications/{{ app.app_id }}">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">
+                No reviewed applications yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

@@ -28,6 +28,10 @@ class FakeCursor:
 
     def execute(self, sql, params):
         sql = ' '.join(sql.split()).lower()
+    
+        if self.conn.fail_on_sql and sql.startswith(self.conn.fail_on_sql):
+            raise RuntimeError('Simulated database failure')
+    
         d = self.conn.data
         self.rowcount = 0
         self.result = None
@@ -37,8 +41,18 @@ class FakeCursor:
 
         elif 'from productcatalog' in sql and 'for update' in sql:
             product = d['product']
-            self.result = product.copy() if (params[0] == product['product_id']
-                       and params[1] == d['driver']['sponsor_id']) else None
+        
+            if 'catalog_enabled = true' not in sql or "content_rating in ('g', 'pg')" not in sql:
+                raise AssertionError(
+                    'Redemption must enforce the content rating and catalog visibility gate.'
+                )
+        
+            self.result = product.copy() if (
+                params[0] == product['product_id']
+                and params[1] == d['driver']['sponsor_id']
+                and product['catalog_enabled']
+                and product['content_rating'] in ('G', 'PG')
+            ) else None
 
         elif 'from rewardredemption' in sql and 'request_key' in sql:
             existing = [o for o in d['orders'] if o['driver_id'] == params[0]
@@ -94,29 +108,53 @@ class FakeCursor:
 
 class FakeConnection:
     def __init__(self, *, balance=500, status='Approved', availability=1,
-                 sponsor_id=7, price=200, trigger_enabled=True):
+             sponsor_id=7, price=200, trigger_enabled=True, fail_on_sql=None,
+             content_rating='G', catalog_enabled=True):
+
         self.data = {
-            'driver': {'driver_id': 4, 'sponsor_id': sponsor_id,
-                       'points': balance, 'application_status': status},
-            'product': {'product_id': 12, 'product_name': 'Gas card',
-                        'point_cost': price, 'availability': availability},
+            'driver': {
+                'driver_id': 4,
+                'sponsor_id': sponsor_id,
+                'points': balance,
+                'application_status': status
+            },
+
+            'product': {
+                'product_id': 12,
+                'product_name': 'Gas card',
+                'point_cost': price,
+                'availability': availability,
+                'content_rating': content_rating,
+                'catalog_enabled': catalog_enabled
+            },
+            
             'trigger_enabled': trigger_enabled,
             'orders': [],
             'logs': []
         }
         self.before = copy.deepcopy(self.data)
+        self.fail_on_sql = fail_on_sql
+        self.transactions_started = 0
+        self.commits = 0
+        self.rollbacks = 0
         self.committed = False
         self.rolled_back = False
-
+        
     def cursor(self):
         return FakeCursor(self)
 
+    def begin(self):
+        self.transactions_started += 1
+        self.before = copy.deepcopy(self.data)
+    
     def commit(self):
         self.committed = True
+        self.commits += 1
         self.before = copy.deepcopy(self.data)
-
+    
     def rollback(self):
         self.rolled_back = True
+        self.rollbacks += 1
         self.data = copy.deepcopy(self.before)
 
     def close(self):
@@ -130,6 +168,9 @@ def test_redeem_deducts_once_and_records_purchase_and_log(monkeypatch, trigger_e
 
     assert rewards.redeem_reward(user_id=42, product_id=12, request_key='a' * 32) == 1
     assert db.committed
+    assert db.transactions_started == 1
+    assert db.commits == 1
+    assert db.rollbacks == 0
     assert db.data['driver']['points'] == 300
     assert len(db.data['orders']) == 1
     assert db.data['orders'][0]['points_spent'] == 200
@@ -154,6 +195,8 @@ def test_invalid_redemptions_roll_back_everything(monkeypatch, kwargs, expected_
         rewards.redeem_reward(42, 12, 'a' * 32)
 
     assert db.rolled_back
+    assert db.transactions_started == 1
+    assert db.commits == 0
     assert db.data == db.before
 
 
@@ -185,6 +228,9 @@ def test_retrying_same_form_does_not_charge_twice(monkeypatch):
     assert db.data['driver']['points'] == 300
     assert len(db.data['orders']) == 1
     assert len(db.data['logs']) == 1
+    assert db.transactions_started == 2
+    assert db.commits == 1
+    assert db.rollbacks == 1
 
 
 def test_invalid_request_key_is_rejected_before_db_access(monkeypatch):
@@ -203,3 +249,107 @@ def test_reused_request_key_cannot_switch_products(monkeypatch):
         rewards.redeem_reward(42, 13, 'c' * 32)
     assert len(db.data['orders']) == 1
     assert db.data['driver']['points'] == 300
+
+@pytest.mark.parametrize('failure_point, trigger_enabled', [
+    ('update driveruser set points', True),
+    ('update pointchangelog set reason', True),
+    ('insert into pointchangelog', False),
+])
+def test_db_write_failure_rolls_back_order_points_and_history(
+        monkeypatch, failure_point, trigger_enabled):
+
+    db = FakeConnection(
+        trigger_enabled=trigger_enabled,
+        fail_on_sql=failure_point
+    )
+
+    monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
+
+    with pytest.raises(RuntimeError, match='Simulated database failure'):
+        rewards.redeem_reward(42, 12, 'd' * 32)
+
+    assert db.transactions_started == 1
+    assert db.commits == 0
+    assert db.rollbacks == 1
+
+    assert db.data == db.before
+    assert db.data['driver']['points'] == 500
+    assert db.data['orders'] == []
+    assert db.data['logs'] == []
+
+
+def test_checkout_review_and_confirmation(monkeypatch):
+    from flask import Flask, g
+    from security import csrf_token
+
+    db = FakeConnection()
+    monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
+    original_execute = FakeCursor.execute
+
+    def execute(self, sql, params):
+        if 'LEFT JOIN Sponsor' in sql:
+            self.result = dict(db.data['driver'], sponsor_name='Team 12')
+        elif 'availability AS available' in sql:
+            self.result = dict(db.data['product'], available=True)
+        else:
+            original_execute(self, sql, params)
+
+    monkeypatch.setattr(FakeCursor, 'execute', execute)
+    app = Flask(__name__, template_folder=os.path.join(BACKEND_DIR, '../frontend'))
+    app.secret_key = 'test'
+    app.register_blueprint(rewards.rewards_bp)
+    app.jinja_env.globals.update(csrf_token=csrf_token, redemption_key=rewards.redemption_key)
+
+    @app.before_request
+    def load_driver():
+        g.user = {'user_id': 42, 'user_type': 'Driver'}
+
+    from html.parser import HTMLParser
+
+    class FormFields(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == 'input':
+                field = dict(attrs)
+                fields[field['name']] = field['value']
+
+    client = app.test_client()
+    review = client.get('/driver/catalog/12/checkout')
+    assert review.status_code == 200
+    assert b'Gas card' in review.data and b'300 points' in review.data
+    assert db.data['driver']['points'] == 500 and not db.data['orders']
+    fields = {}
+    FormFields().feed(review.get_data(as_text=True))
+    for _ in range(2):
+        assert client.post('/rewards/12/redeem', data=fields).location == '/dashboard'
+    assert db.data['driver']['points'] == 300
+    assert len(db.data['orders']) == len(db.data['logs']) == 1
+
+
+def test_price_changed_after_review(monkeypatch):
+    db = FakeConnection(price=250)
+    monkeypatch.setattr(rewards, 'get_db_connection', lambda: db)
+    with pytest.raises(rewards.RedemptionError, match='price changed'):
+        rewards.redeem_reward(42, 12, 'a' * 32, reviewed_cost=200)
+    assert db.data == db.before
+
+@pytest.mark.parametrize('kwargs', [
+    {'content_rating': 'Unrated'},
+    {'content_rating': 'R'},
+    {'catalog_enabled': False},
+])
+def test_hidden_or_unrated_reward_cannot_be_redeemed(monkeypatch, kwargs):
+    db = FakeConnection(**kwargs)
+
+    monkeypatch.setattr(
+        rewards,
+        'get_db_connection',
+        lambda: db
+    )
+
+    with pytest.raises(
+        rewards.RedemptionError,
+        match='not available from your sponsor'
+    ):
+        rewards.redeem_reward(42, 12, 'f' * 32)
+
+    assert db.data == db.before

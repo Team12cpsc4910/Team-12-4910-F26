@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
+</head>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
+  <div class="container wide">
+    <main>
+      <h1>Reports</h1>
+
+      <div class="report-tabs">
+        <a href="/admin/reports{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}" {% if not detailed %}class="active"{% endif %}>Sales Summary</a>
+        <a href="/admin/reports?view=detailed{% if selected_sponsor_id %}&sponsor_id={{ selected_sponsor_id }}{% endif %}" {% if detailed %}class="active"{% endif %}>Sales Details</a>
+        <a href="/admin/reports/points">Driver Points</a>
+        <a href="/admin/application-log">Application Log</a>
+      </div>
+
+      {% if not detailed %}
+      <h2>Sales by Sponsor</h2>
+      <p>Total redemptions, points spent, and dollar sales for every sponsor.</p>
+      <table class="catalog-table report-table">
+        <thead>
+          <tr>
+            <th>Sponsor</th>
+            <th class="num">Redemptions</th>
+            <th class="num">Points Spent</th>
+            <th class="num">Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if sponsor_sales %}
+            {% for sponsor in sponsor_sales %}
+            <tr>
+              <td>{{ sponsor.sponsor_name }}</td>
+              <td class="num">{{ '{:,}'.format(sponsor.total_redemptions) }}</td>
+              <td class="num">{{ '{:,}'.format(sponsor.total_points) }}</td>
+              <td class="num">${{ '{:,.2f}'.format(sponsor.total_sales) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">There are no sponsors yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        {% if sponsor_sales %}
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td class="num">{{ '{:,}'.format(sponsor_sales | sum(attribute='total_redemptions')) }}</td>
+            <td class="num">{{ '{:,}'.format(sponsor_sales | sum(attribute='total_points')) }}</td>
+            <td class="num">${{ '{:,.2f}'.format(sponsor_sales | sum(attribute='total_sales')) }}</td>
+          </tr>
+        </tfoot>
+        {% endif %}
+      </table>
+      <div class="report-footer">
+        <span>{{ sponsor_sales | length }} sponsor{% if sponsor_sales | length != 1 %}s{% endif %}</span>
+        <a href="/admin/reports/download/sales-by-sponsor">Download CSV</a>
+      </div>
+
+      <h2>Sales by Driver</h2>
+      <p>Each driver's redemptions with each sponsor, highest points spent first.</p>
+      {% else %}
+      <h2>Sales Details</h2>
+      <p>Every reward redemption, newest first.</p>
+      {% endif %}
+
+      <form action="/admin/reports" method="get" class="report-filter">
+        {% if detailed %}
+          <input type="hidden" name="view" value="detailed">
+        {% endif %}
+        <label for="sponsor_id">Sponsor:</label>
+        <select id="sponsor_id" name="sponsor_id">
+          <option value="">All Sponsors</option>
+          {% for sponsor in sponsor_sales %}
+            <option value="{{ sponsor.sponsor_id }}" {% if sponsor.sponsor_id == selected_sponsor_id %}selected{% endif %}>{{ sponsor.sponsor_name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Show Sales</button>
+      </form>
+
+      {% if detailed %}
+      <table class="catalog-table report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Driver</th>
+            <th>Sponsor</th>
+            <th>Product</th>
+            <th class="num">Points Spent</th>
+            <th class="num">Sale</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if sales_details %}
+            {% for sale in sales_details %}
+            <tr>
+              <td class="date">{{ sale.redeemed_at.strftime('%b %d, %Y %I:%M %p') }}</td>
+              <td>{{ sale.first_name }} {{ sale.last_name }}</td>
+              <td>{{ sale.sponsor_name }}</td>
+              <td>{{ sale.product_name }}</td>
+              <td class="num">{{ '{:,}'.format(sale.points_spent) }}</td>
+              <td class="num">${{ '{:,.2f}'.format(sale.sale_amount) }}</td>
+              <td><span class="status {{ sale.status | lower }}">{{ sale.status }}</span></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="catalog-empty">There are no sales{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="report-footer">
+        <span>{{ sales_details | length }} sale{% if sales_details | length != 1 %}s{% endif %}</span>
+        <a href="/admin/reports/download/sales-details{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}">Download CSV</a>
+      </div>
+      {% else %}
+      <table class="catalog-table report-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Sponsor</th>
+            <th class="num">Redemptions</th>
+            <th class="num">Points Spent</th>
+            <th class="num">Sales</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if driver_sales %}
+            {% for sale in driver_sales %}
+            <tr>
+              <td>{{ sale.first_name }} {{ sale.last_name }}</td>
+              <td>{{ sale.sponsor_name }}</td>
+              <td class="num">{{ '{:,}'.format(sale.total_redemptions) }}</td>
+              <td class="num">{{ '{:,}'.format(sale.total_points) }}</td>
+              <td class="num">${{ '{:,.2f}'.format(sale.total_sales) }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no driver sales{% if selected_sponsor_id %} for this sponsor{% endif %} yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="report-footer">
+        <span>{{ driver_sales | length }} row{% if driver_sales | length != 1 %}s{% endif %}</span>
+        <a href="/admin/reports/download/sales-by-driver{% if selected_sponsor_id %}?sponsor_id={{ selected_sponsor_id }}{% endif %}">Download CSV</a>
+      </div>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>

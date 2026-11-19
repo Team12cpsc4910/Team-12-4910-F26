@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Driver Point Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
+</head>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
+  <div class="container wide">
+    <main>
+      <h1>Reports</h1>
+
+      <div class="report-tabs">
+        <a href="/admin/reports">Sales Summary</a>
+        <a href="/admin/reports?view=detailed">Sales Details</a>
+        <a href="/admin/reports/points" class="active">Driver Points</a>
+        <a href="/admin/application-log">Application Log</a>
+      </div>
+
+      <h2>Driver Point Report</h2>
+      <p>Every point change, newest first. Changes not made by a sponsor user, such as reward redemptions, show as System.</p>
+
+      <form action="/admin/reports/points" method="get" class="report-filter">
+        <label for="driver_id">Driver:</label>
+        <select id="driver_id" name="driver_id">
+          <option value="">All Drivers</option>
+          {% for driver in drivers %}
+            <option value="{{ driver.driver_id }}" {% if driver.driver_id == selected_driver_id %}selected{% endif %}>{{ driver.first_name }} {{ driver.last_name }} ({{ driver.username }})</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Show Points</button>
+      </form>
+
+      <table class="catalog-table report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Driver</th>
+            <th class="num">Change</th>
+            <th>Changed By</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if report %}
+            {% for row in report %}
+            <tr>
+              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
+              <td>{{ row.first_name }} {{ row.last_name }}</td>
+              <td class="num {% if row.points_change > 0 %}points-up{% else %}points-down{% endif %}">{% if row.points_change > 0 %}+{% endif %}{{ '{:,}'.format(row.points_change) }}</td>
+              <td>{{ row.changed_by }}</td>
+              <td>{{ row.reason }}</td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="5" class="catalog-empty">There are no point changes{% if selected_driver_id %} for this driver{% endif %} yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="report-footer">
+        <span>{{ report | length }} point change{% if report | length != 1 %}s{% endif %}</span>
+        <a href="/admin/reports/download/points{% if selected_driver_id %}?driver_id={{ selected_driver_id }}{% endif %}">Download CSV</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

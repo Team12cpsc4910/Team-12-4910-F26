@@ -1,16 +1,39 @@
-from flask import Blueprint, request, render_template, session, redirect
+import csv
+import io
+
+from flask import Blueprint, request, render_template, session, redirect, g, Response
+from markupsafe import escape
 from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
-from routes.rewards import get_sponsor_catalog
+from routes.rewards import get_sponsor_catalog, require_role, CatalogValidationError
+from routes.admin import change_own_password, AdminError, csv_safe
 
 auth_bp = Blueprint('auth', __name__)
+
+# index.html stays plain HTML because Amplify serves it as-is (no Jinja), so a failed login
+# re-shows the page with the error placed where this HTML comment sits in the login card.
+LOGIN_ERROR_MARKER = '<!-- login-error -->'
+
+
+def login_page_with_error(message, username=''):
+    page = render_template('index.html')
+    page = page.replace(LOGIN_ERROR_MARKER,
+                        f'<p class="auth-error" role="alert">{escape(message)}</p>', 1)
+    # Keep what they typed so only the password needs re-entering
+    if username:
+        page = page.replace('name="username"',
+                            f'name="username" value="{escape(username[:50])}"', 1)
+    return page
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    username = request.form.get('username')
-    password = request.form.get('password')
+    username = (request.form.get('username') or '').strip()
+    password = request.form.get('password') or ''
+
+    if not username or not password:
+        return login_page_with_error('Enter your username and password.', username)
 
     if username == "admin" and password == "test":
         session['username'] = username
@@ -32,7 +55,7 @@ def login():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT user_id, username, password_hash, user_type
+                SELECT user_id, username, password_hash, user_type, account_locked
                 FROM UserAccount
                 WHERE username = %s
             """, (username,))
@@ -43,13 +66,18 @@ def login():
         conn.close()
 
     if user and check_password_hash(user['password_hash'], password):
+        # Checked after the password so a wrong guess can't reveal which accounts are deactivated
+        if user['account_locked']:
+            return login_page_with_error('This account has been deactivated or locked. '
+                                         'Please contact your sponsor or an administrator.', username)
+
         session['user_id'] = user['user_id']
         session['username'] = user['username']
         session['user_type'] = user['user_type']
 
         return redirect('/dashboard')
 
-    return "Invalid username or password. Please press back and try again."
+    return login_page_with_error('Invalid username or password. Please try again.', username)
 
 
 def get_sponsor_point_report(username):
@@ -100,6 +128,21 @@ def get_sponsor_point_report(username):
 
     return report
 
+@auth_bp.route('/sponsor/point-report/download')
+@login_required
+def sponsor_point_report_csv():
+    require_role('Sponsor')
+    rows = [[f"{r['first_name']} {r['last_name']}", r['datetime'], r['points_change'], r['changed_by'], r['reason']]
+            for r in get_sponsor_point_report(g.user['username'])]
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Driver', 'Date', 'Change', 'Changed By', 'Reason'])
+    writer.writerows([[csv_safe(value) for value in row] for row in rows])
+    return Response(output.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=driver-point-report.csv'})
+
+
 
 @auth_bp.route('/dashboard')
 def dashboard():
@@ -113,18 +156,42 @@ def dashboard():
         return render_template('admin_dashboard.html')
 
     elif user_type == "Sponsor":
+        catalog_filters = {key: request.args.get(key, '') for key in
+                           ('search', 'availability', 'min_points', 'max_points', 'sort')}
+        try:
+            catalog = get_sponsor_catalog(
+                session.get('user_id'),
+                search=catalog_filters['search'].strip()[:100],
+                availability=catalog_filters['availability'],
+                min_points=catalog_filters['min_points'],
+                max_points=catalog_filters['max_points'],
+                sort=catalog_filters['sort'] or 'name'
+            )
+            catalog_error = None
+        except CatalogValidationError as exc:
+            catalog = []
+            catalog_error = str(exc)
+
         return render_template(
             'sponsor_dashboard.html',
-            report=get_sponsor_point_report(current_user)
+            report=get_sponsor_point_report(current_user),
+            catalog=catalog,
+            catalog_filters=catalog_filters,
+            catalog_error=catalog_error,
         )
-
+        
     elif user_type == "Driver":
         points = 0
         history = []
         catalog = []
-       redemptions = []
+        redemptions = []
         approved = False
         dropped = False
+        dropped_by = None
+        rejected = False
+        driver_name = None
+        sponsor_name = None
+        status = None
         conn = None
 
         try:
@@ -133,10 +200,14 @@ def dashboard():
             with conn.cursor() as cur:
                 cur.execute("""
                     SELECT d.driver_id,
+                           d.first_name,
                            d.points,
                            d.sponsor_id,
-                           d.application_status
+                           d.application_status,
+                           s.sponsor_name
                     FROM DriverUser d
+                    LEFT JOIN Sponsor s
+                        ON d.sponsor_id = s.sponsor_id
                     WHERE d.user_id = %s
                 """, (session.get('user_id', 0),))
 
@@ -144,6 +215,9 @@ def dashboard():
 
                 if driver:
                     points = driver['points']
+                    driver_name = driver['first_name']
+                    sponsor_name = driver['sponsor_name']
+                    status = driver['application_status']
 
                     cur.execute("""
                         SELECT p.datetime,
@@ -176,6 +250,9 @@ def dashboard():
 
                     approved = driver['application_status'] == 'Approved'
                     dropped = driver['application_status'] == 'Dropped'
+                    # A dropped driver keeps the sponsor_id of the sponsor that dropped them
+                    dropped_by = driver['sponsor_name'] if dropped else None
+                    rejected = driver['application_status'] == 'Rejected'
 
                     if approved:
                         cur.execute("""
@@ -185,7 +262,8 @@ def dashboard():
                                    point_cost,
                                    Availability AS available
                             FROM ProductCatalog
-                            WHERE sponsor_id = %s
+                            WHERE sponsor_id = %s AND catalog_enabled = TRUE
+                              AND content_rating IN ('G', 'PG')
                             ORDER BY product_name
                         """, (driver['sponsor_id'],))
 
@@ -198,14 +276,28 @@ def dashboard():
             if conn and conn.open:
                 conn.close()
 
+        # Dashboard highlights: the priciest rewards the driver can redeem right now, or
+        # (when none are affordable) the cheapest one to work toward.
+        redeemable = [item for item in catalog if item['available'] and 0 < item['point_cost']]
+        affordable = sorted((item for item in redeemable if item['point_cost'] <= points),
+                            key=lambda item: item['point_cost'], reverse=True)[:4]
+        next_reward = None if affordable else min(redeemable, key=lambda item: item['point_cost'], default=None)
+
         return render_template(
             'driver_dashboard.html',
+            driver_name=driver_name,
+            sponsor_name=sponsor_name,
+            status=status,
+            affordable=affordable,
+            next_reward=next_reward,
             points=points,
             history=history,
             catalog=catalog,
             redemptions=redemptions,
             approved=approved,
-            dropped=dropped
+            dropped=dropped,
+            dropped_by=dropped_by,
+            rejected=rejected
         )
 
     else:
@@ -322,7 +414,31 @@ def profile():
     finally:
         conn.close()
 
-    return render_template('profile.html', user=user)
+    return render_template('profile.html', user=user,
+                           password_changed=request.args.get('password_changed') == '1')
+
+# Change Password: any real (database) account changes its own password by confirming the current
+# one. Reuses the admin page's change_own_password, so complexity rules and logging stay in one place.
+@auth_bp.route('/password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    # An admin assuming a driver is acting as that driver, so they can't change the driver's password
+    if session.get('impersonator'):
+        return redirect('/profile')
+
+    error = None
+    if request.method == 'POST':
+        check_csrf()
+        try:
+            change_own_password(g.user['user_id'],
+                                request.form.get('current_password', ''),
+                                request.form.get('new_password', ''),
+                                request.form.get('confirm_password', ''))
+            return redirect('/profile?password_changed=1')
+        except AdminError as exc:
+            error = str(exc)
+
+    return render_template('password_form.html', error=error), (400 if error else 200)
 
 
 @auth_bp.route('/logout')

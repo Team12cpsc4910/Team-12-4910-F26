@@ -2,45 +2,318 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sponsor Dashboard</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
 </head>
-<body>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
   <div class="container">
-    <nav>
-      <a href="/sponsor/applications">Applications</a>
-      <a href="/profile">My Profile</a>
-      <a href="/logout">Log Out</a>
-    </nav>
     <main>
       <h1 style="text-align: center;">Sponsor Dashboard</h1>
+      {% for category, message in get_flashed_messages(with_categories=true) %}
+        <p role="status">{{ message }}</p>
+      {% endfor %}
       <p style="text-align: center;">Welcome, Sponsor. Your product catalog and driver reports will appear here.</p>
 
       <!-- Product catalog: Price (points) column shows product price in driver points; Availability column shows current stock status -->
       <h2>Product Catalog</h2>
+
+      <p><a href="/sponsor/catalog/rules">Configure automatic catalog generation rules</a></p>
+      
+      <form method="GET" action="/dashboard" class="catalog-filters" role="search">
+      
+          <label>Search
+              <input type="search"
+                     name="search"
+                     value="{{ catalog_filters.search }}"
+                     maxlength="100"
+                     placeholder="Reward name">
+          </label>
+      
+          <label>Availability
+              <select name="availability">
+                  <option value="">All stock statuses</option>
+                  <option value="in_stock"
+                      {{ 'selected' if catalog_filters.availability == 'in_stock' else '' }}>
+                      In stock
+                  </option>
+                  <option value="out_of_stock"
+                      {{ 'selected' if catalog_filters.availability == 'out_of_stock' else '' }}>
+                      Out of stock
+                  </option>
+              </select>
+          </label>
+      
+          <label>Min points
+              <input type="number"
+                     name="min_points"
+                     min="1"
+                     max="1000000"
+                     value="{{ catalog_filters.min_points }}">
+          </label>
+      
+          <label>Max points
+              <input type="number"
+                     name="max_points"
+                     min="1"
+                     max="1000000"
+                     value="{{ catalog_filters.max_points }}">
+          </label>
+      
+          <label>Sort by
+              <select name="sort">
+                  <option value="name"
+                      {{ 'selected' if catalog_filters.sort in ('', 'name') else '' }}>
+                      Name
+                  </option>
+                  <option value="points_asc"
+                      {{ 'selected' if catalog_filters.sort == 'points_asc' else '' }}>
+                      Points: lowest first
+                  </option>
+                  <option value="points_desc"
+                      {{ 'selected' if catalog_filters.sort == 'points_desc' else '' }}>
+                      Points: highest first
+                  </option>
+              </select>
+          </label>
+      
+          <button type="submit">Apply filters</button>
+          <a href="/dashboard">Clear filters</a>
+      
+      </form>
+      
+      {% if catalog_error %}
+          <p role="alert">{{ catalog_error }}</p>
+      {% endif %}
+      
+      <p>
+          {{ catalog | length }}
+          reward{{ '' if catalog | length == 1 else 's' }} shown.
+      </p>
+      
       <table class="catalog-table">
         <thead>
-          <tr>
-            <th>Product</th>
-            <th>Price (points)</th>
-            <th>Availability</th>
-          </tr>
+            <tr>
+                <th>Product</th>
+                <th>Price (points)</th>
+                <th>Availability</th>
+                <th>Classification / Auto rules</th>
+                <th>Action</th>
+            </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td colspan="3" class="catalog-empty">Catalog will load here from the product API.</td>
-          </tr>
-        </tbody>
-      </table>
+          <tbody>
+              {% if catalog %}
+                  {% for item in catalog %}
+                  <tr>
+                      <td>
+                          {% if item.image_url %}
+                              <img
+                                  src="{{ item.image_url }}"
+                                  alt=""
+                                  width="75"
+                                  loading="lazy"
+                                  style="vertical-align:middle; margin-right:8px;"
+                              >
+                          {% endif %}
+                          {{ item.product_name }}
+                      </td>
+                      <td>{{ item.point_cost }}</td>
 
+                      <td>
+                          {{ 'In Stock' if item.available else 'Unavailable' }}
+                      </td>
+                      
+                      <td>
+                          <form method="POST"
+                                action="/sponsor/catalog/{{ item.product_id }}/settings"
+                                class="catalog-settings">
+                      
+                              <input type="hidden"
+                                     name="csrf_token"
+                                     value="{{ csrf_token() }}">
+                      
+                              <label>Category
+                                  <select name="category" required>
+                      
+                                      {% for cat in ('Games', 'Gift Cards', 'Electronics', 'Entertainment', 'Other') %}
+                      
+                                      <option value="{{ cat }}"
+                                          {{ 'selected' if item.category == cat else '' }}>
+                                          {{ cat }}
+                                      </option>
+                      
+                                      {% endfor %}
+                      
+                                  </select>
+                              </label>
+                      
+                              <label>Rating
+                                  <select name="content_rating" required>
+                      
+                                      <option value="Unrated"
+                                          {{ 'selected' if item.content_rating not in ('G', 'PG') else '' }}>
+                                          Unrated / not approved
+                                      </option>
+                      
+                                      <option value="G"
+                                          {{ 'selected' if item.content_rating == 'G' else '' }}>
+                                          G
+                                      </option>
+                      
+                                      <option value="PG"
+                                          {{ 'selected' if item.content_rating == 'PG' else '' }}>
+                                          PG
+                                      </option>
+                      
+                                  </select>
+                              </label>
+                      
+                              <label>
+                                  <input type="checkbox"
+                                         name="auto_managed"
+                                         {{ 'checked' if item.auto_managed else '' }}>
+                                  Auto-managed
+                              </label>
+                      
+                              <button type="submit">Save classification</button>
+                      
+                              {% if item.content_rating not in ('G', 'PG') %}
+                                  <small>Not offered: content rating required.</small>
+                      
+                              {% elif not item.catalog_enabled %}
+                                  <small>Hidden by automatic rules.</small>
+                      
+                              {% endif %}
+                      
+                          </form>
+                      </td>
+                      
+                      <td>
+                          <form method="POST"
+                                action="/sponsor/catalog/{{ item.product_id }}/availability">
+      
+                              <input type="hidden"
+                                     name="csrf_token"
+                                     value="{{ csrf_token() }}">
+      
+                              <button type="submit">
+                                  {{ 'Disable' if item.available else 'Enable' }}
+                              </button>
+                          </form>
+
+                          <form method="POST"
+                                action="/sponsor/catalog/{{ item.product_id }}/remove"
+                                onsubmit="return confirm('Remove this reward from your catalog? Rewards that drivers have already ordered can only be disabled.');">
+                              <input type="hidden"
+                                     name="csrf_token"
+                                     value="{{ csrf_token() }}">
+                              <button type="submit" class="danger">Remove</button>
+                          </form>
+                      </td>
+                  </tr>
+                  {% endfor %}
+              {% else %}
+                <tr>
+                    <td colspan="5" class="catalog-empty">
+                        No rewards match your filters.
+                    </td>
+                </tr>
+            {% endif %}
+          </tbody>
+      </table>
+      <p>
+          <a href="/sponsor/games">
+              Find games with GG.deals to add as rewards
+          </a>
+      </p>
+      <p>
+          Game titles and retail price data provided by
+          <a href="https://gg.deals/">GG.deals</a>.
+      </p>
+    <h3>Add Reward</h3>
+
+  <form method="POST" action="/sponsor/catalog">
+  
+      <input type="hidden"
+             name="csrf_token"
+             value="{{ csrf_token() }}">
+  
+      <label>
+          Product name
+          <input type="text"
+                 name="product_name"
+                 maxlength="100"
+                 required>
+      </label>
+  
+      <label>
+          Point cost
+          <input type="number"
+                 name="point_cost"
+                 min="1"
+                 max="1000000"
+                 required>
+      </label>
+      <label>
+          Category
+      
+          <select name="category" required>
+              <option value="Games">Games</option>
+              <option value="Gift Cards">Gift Cards</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Other">Other</option>
+          </select>
+      </label>
+      
+      <label>
+          Content suitability (sponsor-classified)
+      
+          <select name="content_rating" required>
+      
+              <option value="" selected disabled>
+                  Choose sponsor-confirmed rating
+              </option>
+      
+              <option value="G">G</option>
+              <option value="PG">PG</option>
+      
+          </select>
+      </label>
+      
+      <label>
+          <input type="checkbox"
+                 name="auto_managed"
+                 checked>
+      
+          Apply my automatic catalog rules
+      </label>
+      
+      <p>
+          <small>
+              Only G/PG-appropriate rewards may be offered.
+              These labels are sponsor classifications, not ratings confirmed
+              by GG.deals. Verify age suitability independently.
+          </small>
+      </p>
+          <button type="submit">Add Reward</button>
+</form>
+      
       <!-- Driver Point Report: driver name identifies which driver each point change row belongs to -->
       <h2>Driver Point Report</h2>
-      <table class="catalog-table">
+      <p>Every point change for your drivers, newest first. Changes not made by a sponsor user, such as reward redemptions, show as Unknown.</p>
+      <table class="catalog-table report-table">
         <thead>
           <tr>
-            <th>Driver</th>
             <th>Date</th>
-            <th>Change</th>
+            <th>Driver</th>
+            <th class="num">Change</th>
             <th>Changed By</th>
             <th>Reason</th>
           </tr>
@@ -49,9 +322,9 @@
           {% if report %}
             {% for row in report %}
             <tr>
+              <td class="date">{{ row.datetime.strftime('%b %d, %Y %I:%M %p') }}</td>
               <td>{{ row.first_name }} {{ row.last_name }}</td>
-              <td>{{ row.datetime }}</td>
-              <td>{% if row.points_change > 0 %}+{% endif %}{{ row.points_change }}</td>
+              <td class="num {% if row.points_change > 0 %}points-up{% else %}points-down{% endif %}">{% if row.points_change > 0 %}+{% endif %}{{ '{:,}'.format(row.points_change) }}</td>
               <td>{{ row.changed_by }}</td>
               <td>{{ row.reason }}</td>
             </tr>
@@ -63,6 +336,10 @@
           {% endif %}
         </tbody>
       </table>
+      <div class="report-footer">
+        <span>{{ report | length }} point change{% if report | length != 1 %}s{% endif %}</span>
+        <a href="/sponsor/point-report/download">Download CSV</a>
+      </div>
     </main>
   </div>
 </body>

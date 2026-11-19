@@ -48,7 +48,7 @@ BEGIN
         val_user_id,
         param_sponsor_id,
         0,
-        'Pending',
+        'Not Applied',
         param_first_name,
         param_last_name
     );
@@ -227,5 +227,51 @@ BEGIN
 
     COMMIT;
 END //
+
+CREATE PROCEDURE GenerateSponsorInvoice(
+    IN param_sponsor_id INT,
+    IN param_month INT, -- 1-12 for January to December
+    IN param_year INT
+)
+BEGIN
+    DECLARE val_point_value DECIMAL(10,2);
+    
+    -- Get the sponsor's point-to-dollar conversion rate
+    SELECT point_value INTO val_point_value 
+    FROM Sponsor WHERE sponsor_id = param_sponsor_id//
+
+    -- Return the invoice summary
+    SELECT 
+        s.sponsor_id,
+        s.sponsor_name,
+        param_month AS billing_month,
+        param_year AS billing_year,
+        COUNT(rr.redemption_id) AS total_redemptions,
+        COALESCE(SUM(rr.points_spent), 0) AS total_points_spent,
+        (COALESCE(SUM(rr.points_spent), 0) * val_point_value) AS total_amount_owed,
+        CURRENT_TIMESTAMP AS generated_at
+    FROM RewardRedemption rr
+    INNER JOIN Sponsor s ON rr.sponsor_id = s.sponsor_id
+    WHERE rr.sponsor_id = param_sponsor_id
+      AND MONTH(rr.redeemed_at) = param_month
+      AND YEAR(rr.redeemed_at) = param_year
+    GROUP BY s.sponsor_id, s.sponsor_name//
+
+    -- Return the line items for the invoice
+    SELECT 
+        rr.redemption_id,
+        rr.redeemed_at,
+        du.first_name AS driver_first_name,
+        du.last_name AS driver_last_name,
+        rr.product_name,
+        rr.points_spent,
+        (rr.points_spent * val_point_value) AS line_item_cost
+    FROM RewardRedemption rr
+    INNER JOIN DriverUser du ON rr.driver_id = du.driver_id
+    WHERE rr.sponsor_id = param_sponsor_id
+      AND MONTH(rr.redeemed_at) = param_month
+      AND YEAR(rr.redeemed_at) = param_year
+    ORDER BY rr.redeemed_at ASC//
+END//
 
 DELIMITER ;

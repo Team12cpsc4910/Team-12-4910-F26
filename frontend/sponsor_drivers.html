@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Drivers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12">
+</head>
+<body class="app-body">
+
+{% include '_app_header.html' %}
+
+  <div class="container">
+    <main>
+      <h1 style="text-align: center;">My Drivers</h1>
+      <p style="text-align: center;">Drivers in your incentive program. Select a driver to view their profile.</p>
+
+      {% if added %}
+        <p class="success-message">Driver added. They can now log in with the username and password you set.</p>
+      {% endif %}
+
+      <form action="/sponsor/drivers/new" method="get">
+        <button type="submit">Add Driver</button>
+      </form>
+
+      <table class="catalog-table">
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Points</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if drivers %}
+            {% for driver in drivers %}
+            <tr>
+              <td>{{ driver.first_name }} {{ driver.last_name }}</td>
+              <td>{{ driver.points }}</td>
+              <td><span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span></td>
+              <td><a href="/sponsor/drivers/{{ driver.driver_id }}">View</a></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="4" class="catalog-empty">No drivers are in your program yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>

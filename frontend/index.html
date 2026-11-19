@@ -2,41 +2,90 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Login - Good Driver Incentive Program</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log In - Good Driver Incentive Program</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/style.css?v=9" />
 </head>
-<body>
-  <div class="container">
-    <nav>
-      <a href="/">Home</a>
-      <a href="https://team12-backend-api.duckdns.org/about">About</a>
+<body class="auth-body">
+
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" />
+          <path d="M8.5 12l2.5 2.5 4.5-5" />
+        </svg>
+      </span>
+      <span>Good Driver <span class="brand-sub">Incentive Program</span></span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="https://main.d13wzj1s6istn6.amplifyapp.com/about.html">About</a>
+      <a class="nav-cta" href="https://team12-backend-api.duckdns.org/register">Create Account</a>
     </nav>
+  </header>
 
-    <main>
-      <h1>Good Driver Incentive Program</h1>
-      <p style="text-align: center;">Welcome! Please log in to continue.</p>
+  <main class="auth-layout">
 
-     <form action="https://team12-backend-api.duckdns.org/login" method="POST" class="login-form">
+    <section class="auth-intro">
+      <p class="eyebrow">Driver rewards program</p>
+      <h1>Drive safe. Earn points. <span class="accent">Get rewarded.</span></h1>
+      <p class="lead">
+        Sponsors reward good driving with points, and drivers redeem those points for
+        rewards from their sponsor's catalog.
+      </p>
+      <ul class="auth-features">
+        <li>
+          <strong>Drivers</strong>
+          <span>Track your points and redeem rewards.</span>
+        </li>
+        <li>
+          <strong>Sponsors</strong>
+          <span>Manage drivers, points, and your reward catalog.</span>
+        </li>
+        <li>
+          <strong>Admins</strong>
+          <span>Oversee users, sponsors, and reports.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="auth-card" aria-labelledby="login-title">
+      <h2 id="login-title">Log in</h2>
+      <p class="auth-card-sub">Welcome back! Enter your account details to continue.</p>
+
+      <!-- login-error -->
+
+      <form action="https://team12-backend-api.duckdns.org/login" method="POST" class="auth-form">
         <div class="form-group">
-          <label for="username">Username:</label>
-          <input type="text" id="username" name="username" placeholder="Enter username" required>
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" placeholder="Enter your username"
+                 autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
         </div>
-        
+
         <div class="form-group">
-          <label for="password">Password:</label>
-          <input type="password" id="password" name="password" placeholder="Enter password" required>
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password"
+                 autocomplete="current-password" required>
         </div>
 
         <button type="submit">Log In</button>
-        </form>
-        
-        <p style="text-align: center; margin-top: 20px;">
-          Don't have an account?
-          <a href="https://team12-backend-api.duckdns.org/register">
-            Create Account
-          </a>
-        </p>
-    </main>
-  </div>
+      </form>
+
+      <p class="auth-switch">
+        Don't have an account?
+        <a href="https://team12-backend-api.duckdns.org/register">Create one</a>
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>&copy; 2026 Team 12 &middot; Good Driver Incentive Program</span>
+    <a href="https://main.d13wzj1s6istn6.amplifyapp.com/about.html">About</a>
+  </footer>
+
 </body>
 </html>

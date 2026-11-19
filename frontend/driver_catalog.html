@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Rewards Catalog</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/style.css?v=14">
+</head>
+
+<body class="app-body">
+
+{% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
+
+{# Builds a catalog link with the given search/category/sort, leaving out empty values #}
+{% macro catalog_url(search, category, sort) -%}
+  /driver/catalog?{{ {'search': search, 'category': category, 'sort': sort if sort != 'name' else ''} | dictsort | selectattr(1) | list | urlencode }}
+{%- endmacro %}
+
+<div class="page">
+    <main>
+
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="notice {{ 'notice-error' if category == 'error' else 'notice-success' }}" role="status">
+                <span>{{ message }}</span>
+                {% if category != 'error' %}<a href="/driver/cart">View cart {{ icon('arrow-right', 16) }}</a>{% endif %}
+            </div>
+        {% endfor %}
+
+        <section class="page-heading">
+            <div>
+                <h1>Rewards Catalog</h1>
+                <p>
+                    {% if driver and driver.sponsor_name and driver.application_status == 'Approved' %}
+                        Rewards from <strong>{{ driver.sponsor_name }}</strong>. Spend your points on anything below.
+                    {% else %}
+                        Spend your points on rewards from your sponsor.
+                    {% endif %}
+                </p>
+            </div>
+            {% if driver %}
+                <span class="points-pill">{{ icon('coins', 18) }} {{ '{:,}'.format(driver.points) }} points</span>
+            {% endif %}
+        </section>
+
+        {% if not driver %}
+
+            <p class="empty-state">You don't have a driver profile yet.</p>
+
+        {% elif driver.application_status == 'Dropped' %}
+
+            <p class="empty-state">
+                You've been dropped from your sponsor's program, so the catalog is unavailable.
+                You can apply to a sponsor from <a href="/applications">Applications</a>.
+            </p>
+
+        {% elif driver.application_status == 'Rejected' %}
+
+            <p class="empty-state">
+                Your application was rejected. Visit <a href="/applications">Applications</a> to apply again.
+            </p>
+
+        {% elif driver.application_status != 'Approved' or driver.sponsor_id is none %}
+
+            <p class="empty-state">
+                Your sponsor must approve your application before you can browse rewards.
+                Check its status on <a href="/applications">Applications</a>.
+            </p>
+
+        {% else %}
+
+            <!-- Search, category, and sort: always scoped to this driver's sponsor -->
+            <form method="GET" action="/driver/catalog" class="shop-toolbar" role="search">
+                <div class="search-field">
+                    <label for="catalog-search-input" class="visually-hidden">Search rewards</label>
+                    {{ icon('search', 18) }}
+                    <input type="search" id="catalog-search-input" name="search"
+                           value="{{ search }}" maxlength="{{ max_search_length }}"
+                           placeholder="Search rewards">
+                    {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+                    <button type="submit" class="button-small">Search</button>
+                </div>
+
+                <label class="sort-field">
+                    <span>Sort by</span>
+                    <select name="sort" onchange="this.form.submit()">
+                        {% for value, option in sort_options.items() %}
+                            <option value="{{ value }}" {{ 'selected' if sort == value }}>{{ option[0] }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <noscript><button type="submit" class="button-small">Apply</button></noscript>
+            </form>
+
+            {% if categories %}
+            <nav class="chip-row" aria-label="Categories">
+                <a href="{{ catalog_url(search, '', sort) }}" class="chip{{ ' active' if not selected_category }}"
+                   {% if not selected_category %}aria-current="true"{% endif %}>All</a>
+                {% for choice in categories %}
+                    <a href="{{ catalog_url(search, choice, sort) }}" class="chip{{ ' active' if selected_category == choice }}"
+                       {% if selected_category == choice %}aria-current="true"{% endif %}>{{ choice }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+
+            <div class="results-bar">
+                <span>
+                    {{ catalog | length }} reward{{ '' if catalog | length == 1 else 's' }}
+                    {% if search %} for &ldquo;{{ search }}&rdquo;{% endif %}
+                    {% if selected_category %} in {{ selected_category }}{% endif %}
+                </span>
+                {% if search or selected_category %}<a href="/driver/catalog">Clear filters</a>{% endif %}
+            </div>
+
+            {% if catalog %}
+            <ul class="product-grid">
+                {% for item in catalog %}
+                {% set orderable = item.available and item.point_cost > 0 %}
+                <li class="product-card{{ ' is-unavailable' if not orderable }}">
+
+                    <a href="/driver/catalog/{{ item.product_id }}" class="product-media" tabindex="-1" aria-hidden="true">
+                        {% if item.image_url %}
+                            <img src="{{ item.image_url }}" alt="" loading="lazy">
+                        {% else %}
+                            <span class="product-placeholder">{{ icon('gift', 36) }}</span>
+                        {% endif %}
+                        {% if not orderable %}<span class="product-flag">Unavailable</span>{% endif %}
+                    </a>
+
+                    <div class="product-body">
+                        {% if item.category %}<span class="product-category">{{ item.category }}</span>{% endif %}
+                        <h2 class="product-title"><a href="/driver/catalog/{{ item.product_id }}">{{ item.product_name }}</a></h2>
+                        {% if item.description %}<p class="product-description">{{ item.description }}</p>{% endif %}
+
+                        <div class="product-price">
+                            <span class="price-line"><strong>{{ '{:,}'.format(item.point_cost) }}</strong> points</span>
+                            {% if orderable %}
+                                {% if driver.points >= item.point_cost %}
+                                    <span class="afford yes">{{ icon('check', 14) }} You can afford this</span>
+                                {% else %}
+                                    <span class="afford no">{{ '{:,}'.format(item.point_cost - driver.points) }} more points needed</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+
+                        <div class="product-actions">
+                            {% if not orderable %}
+                                <button type="button" class="button-small" disabled>Unavailable</button>
+                            {% elif item.product_id in in_cart %}
+                                <a href="/driver/cart" class="button-ghost">{{ icon('check', 16) }} In cart</a>
+                            {% else %}
+                                <form method="POST" action="/driver/cart/{{ item.product_id }}/add">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+                                    <button type="submit" class="button-small">{{ icon('cart', 16) }} Add to cart</button>
+                                </form>
+                            {% endif %}
+
+                            {% if orderable and driver.points >= item.point_cost %}
+                                <a href="/driver/catalog/{{ item.product_id }}/checkout" class="text-link">Buy now</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+                <p class="empty-state">
+                    {% if search or selected_category %}
+                        No rewards match these filters. <a href="/driver/catalog">Clear filters</a>
+                    {% else %}
+                        Your sponsor hasn't added any rewards yet.
+                    {% endif %}
+                </p>
+            {% endif %}
+
+            <p class="attribution">
+                Game information and pricing may be provided by
+                <a href="https://gg.deals/" target="_blank" rel="noopener noreferrer">GG.deals</a>.
+                Points prices are set by sponsors. Sponsors are responsible for fulfilling rewards.
+            </p>
+
+        {% endif %}
+
+    </main>
+</div>
+
+</body>
+</html>
