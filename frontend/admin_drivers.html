@@ -3,76 +3,108 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Drivers</title>
+  <title>Drivers - Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=28">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1 style="text-align: center;">Drivers</h1>
-      <p style="text-align: center;">Every driver account. Use "View as Driver" to see and use the site from that driver's perspective.</p>
+{% set status_class = {'Approved': 'approved', 'Pending': 'pending', 'Rejected': 'rejected', 'Dropped': 'dropped'} %}
 
-      {% if password_reset %}
-        <p class="success-message">Password reset. Give the driver their new password.</p>
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>Drivers</h1>
+        <p>Every driver account. Use <strong>View as driver</strong> to see and use the site from that driver's perspective.</p>
+      </div>
+      <a href="/admin/accounts/new" class="button-link button-inline">{{ icon('user-plus', 18) }} Create user</a>
+    </section>
+
+    {% if password_reset %}
+      <div class="notice notice-success notice-with-icon" role="status">{{ icon('check', 18) }}<span>Password reset. Give the driver their new password.</span></div>
+    {% endif %}
+    {% if locked %}
+      <div class="notice notice-error notice-with-icon" role="alert">{{ icon('lock', 18) }}<span>That driver's account is locked, so it can't be viewed. Unlock it first.</span></div>
+    {% endif %}
+
+    <section class="panel" aria-labelledby="list-title">
+      <div class="panel-heading">
+        <h2 id="list-title">{{ icon('users', 20) }} All drivers <span class="count-pill" id="driver-rows-count">{{ drivers | length }} total</span></h2>
+      </div>
+
+      {% if drivers %}
+        <div class="filter-bar">
+          <div class="search-field">
+            <label for="driver-search" class="visually-hidden">Search drivers</label>
+            {{ icon('search', 18) }}
+            <input type="search" id="driver-search" data-live-search="driver-rows" placeholder="Search by name, username, or sponsor" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="catalog-table report-table people-table stack-table">
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Sponsor</th>
+                <th class="num">Points</th>
+                <th>Status</th>
+                <th><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="driver-rows">
+              {% for driver in drivers %}
+              <tr data-search="{{ (driver.first_name ~ ' ' ~ driver.last_name ~ ' ' ~ driver.username ~ ' ' ~ (driver.sponsor_name or '')) | lower }}">
+                <td data-label="Driver">
+                  <span class="person-cell">
+                    <span class="app-icon avatar-initials {{ 'is-muted' if driver.account_locked else 'is-approved' }}" aria-hidden="true">
+                      {{ ((driver.first_name or '?')[0] ~ (driver.last_name or '')[:1]) | upper }}
+                    </span>
+                    <span><strong>{{ driver.first_name }} {{ driver.last_name }}</strong><small>@{{ driver.username }}</small></span>
+                  </span>
+                </td>
+                <td data-label="Sponsor">{{ driver.sponsor_name or '—' }}</td>
+                <td data-label="Points" class="num"><strong>{{ '{:,}'.format(driver.points or 0) }}</strong></td>
+                <td data-label="Status">
+                  {% if driver.account_locked %}
+                    <span class="status dropped">{{ icon('lock', 12) }} Locked</span>
+                  {% else %}
+                    <span class="status {{ status_class.get(driver.application_status, 'neutral') }}">{{ driver.application_status }}</span>
+                  {% endif %}
+                </td>
+                <td class="action-cell">
+                  <div class="row-actions row-actions-inline">
+                    {% if not driver.account_locked %}
+                      <form action="/admin/drivers/{{ driver.driver_id }}/assume" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="link-button link-primary"
+                                aria-label="View the site as {{ driver.first_name }} {{ driver.last_name }}">{{ icon('eye', 16) }} View as driver</button>
+                      </form>
+                    {% endif %}
+                    <a href="/admin/users/{{ driver.user_id }}/reset-password" class="link-button"
+                       aria-label="Reset password for {{ driver.first_name }} {{ driver.last_name }}">{{ icon('lock', 16) }} Reset password</a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p id="driver-rows-none" class="empty-state" hidden>No drivers match your search.</p>
+        {% include '_live_search.html' %}
+      {% else %}
+        <p class="empty-state">There are no drivers yet.</p>
       {% endif %}
+    </section>
 
-      {% if locked %}
-        <p class="error-message">That driver's account is locked, so it can't be viewed. Unlock it first.</p>
-      {% endif %}
-
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Driver</th>
-            <th>Username</th>
-            <th>Sponsor</th>
-            <th>Points</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if drivers %}
-            {% for driver in drivers %}
-            <tr>
-              <td>{{ driver.first_name }} {{ driver.last_name }}</td>
-              <td>{{ driver.username }}</td>
-              <td>{{ driver.sponsor_name or '—' }}</td>
-              <td>{{ driver.points }}</td>
-              <td>
-                {% if driver.account_locked %}
-                  <span class="status dropped">Locked</span>
-                {% else %}
-                  <span class="status {{ driver.application_status | lower }}">{{ driver.application_status }}</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if not driver.account_locked %}
-                <form action="/admin/drivers/{{ driver.driver_id }}/assume" method="POST">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit">View as Driver</button>
-                </form>
-                {% endif %}
-                <form action="/admin/users/{{ driver.user_id }}/reset-password" method="get">
-                  <button type="submit">Reset Password</button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="6" class="catalog-empty">There are no drivers yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </main>
-  </div>
+  </main>
+</div>
 </body>
 </html>

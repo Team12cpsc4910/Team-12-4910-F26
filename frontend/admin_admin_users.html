@@ -3,62 +3,89 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin Users</title>
+  <title>Admin Users - Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=28">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1 style="text-align: center;">Admin Users</h1>
-      <p style="text-align: center;">Every administrator account. Select an admin to view their information.</p>
-      
-      <table class="catalog-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if admin_users %}
-            {% for admin in admin_users %}
-            <tr>
-              <td>
-                {% if admin.first_name or admin.last_name %}
-                  {{ admin.first_name or '' }} {{ admin.last_name or '' }}
-                {% else %}
-                  —
-                {% endif %}
-              </td>
-              <td>{{ admin.username }}</td>
-              <td>{{ admin.email }}</td>
-              <td>
-                {% if admin.account_locked %}
-                  <span class="status dropped">Locked</span>
-                {% else %}
-                  <span class="status approved">Active</span>
-                {% endif %}
-              </td>
-              <td><a href="/admin/admin-users/{{ admin.admin_user_id }}">View</a></td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="5" class="catalog-empty">There are no admin users yet.</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </main>
-  </div>
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>Admin users</h1>
+        <p>Every administrator account. Select an admin to view or edit their information.</p>
+      </div>
+      <a href="/admin/accounts/new" class="button-link button-inline">{{ icon('user-plus', 18) }} Create user</a>
+    </section>
+
+    <section class="panel" aria-labelledby="list-title">
+      <div class="panel-heading">
+        <h2 id="list-title">{{ icon('shield', 20) }} All admins <span class="count-pill" id="admin-rows-count">{{ admin_users | length }} total</span></h2>
+      </div>
+
+      {% if admin_users %}
+        <div class="filter-bar">
+          <div class="search-field">
+            <label for="admin-search" class="visually-hidden">Search admin users</label>
+            {{ icon('search', 18) }}
+            <input type="search" id="admin-search" data-live-search="admin-rows" placeholder="Search by name, username, or email" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="catalog-table report-table people-table stack-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th><span class="visually-hidden">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody id="admin-rows">
+              {% for admin in admin_users %}
+              {% set full_name = ((admin.first_name or '') ~ ' ' ~ (admin.last_name or '')) | trim %}
+              {% set initials = ((admin.first_name or '')[:1] ~ (admin.last_name or '')[:1]) | upper %}
+              <tr data-search="{{ (full_name ~ ' ' ~ admin.username ~ ' ' ~ (admin.email or '')) | lower }}">
+                <td data-label="Name">
+                  <a href="/admin/admin-users/{{ admin.admin_user_id }}" class="person-cell">
+                    <span class="app-icon avatar-initials {{ 'is-muted' if admin.account_locked else 'is-approved' }}" aria-hidden="true">
+                      {{ initials or icon('shield', 16) }}
+                    </span>
+                    <span><strong>{{ full_name or admin.username }}</strong><small>@{{ admin.username }}</small></span>
+                  </a>
+                </td>
+                <td data-label="Email" class="email-cell">{{ admin.email or '—' }}</td>
+                <td data-label="Status">
+                  {% if admin.account_locked %}
+                    <span class="status dropped">{{ icon('lock', 12) }} Locked</span>
+                  {% else %}
+                    <span class="status approved">Active</span>
+                  {% endif %}
+                </td>
+                <td class="action-cell">
+                  <a href="/admin/admin-users/{{ admin.admin_user_id }}" class="text-link row-arrow">View {{ icon('arrow-right', 14) }}</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p id="admin-rows-none" class="empty-state" hidden>No admins match your search.</p>
+        {% include '_live_search.html' %}
+      {% else %}
+        <p class="empty-state">There are no admin users yet.</p>
+      {% endif %}
+    </section>
+
+  </main>
+</div>
 </body>
 </html>

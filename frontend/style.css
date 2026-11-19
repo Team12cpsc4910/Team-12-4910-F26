@@ -4568,3 +4568,86 @@ button.button-danger-outline:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ===== Admin user lists (admin_drivers.html, admin_sponsor_users.html, admin_admin_users.html) ===== */
+.person-cell > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.person-cell small {
+  color: #94a3b8;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.status .icon {
+  display: inline-block;
+  vertical-align: -1px;
+}
+
+.row-actions.row-actions-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.row-actions-inline a.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 0.88em;
+  font-weight: 600;
+}
+
+.row-actions-inline a.link-button:hover {
+  color: #e2e8f0;
+}
+
+button.link-button.link-primary {
+  color: #38bdf8;
+}
+
+button.link-button.link-primary:hover {
+  color: #7dd3fc;
+}
+
+.row-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.email-cell {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .stack-table .row-actions-inline {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* The person is the card's title, so it needs no label */
+  .people-table.stack-table td:first-child {
+    justify-content: flex-start;
+    text-align: left;
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .people-table.stack-table td:first-child::before {
+    content: none;
+  }
+
+  .stack-table td.action-cell {
+    justify-content: flex-start;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin-top: 4px;
+    padding-top: 12px;
+  }
+}

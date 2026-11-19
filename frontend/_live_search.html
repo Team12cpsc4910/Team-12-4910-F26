@@ -1,0 +1,24 @@
+{#- Live table search. Put data-live-search="ROWS_ID" on a search input and data-search="text to match"
+    on each row inside <tbody id="ROWS_ID">. An element with id="ROWS_ID-none" is shown when nothing matches.
+    Include once per page, after the table. -#}
+<script>
+  (function () {
+    document.querySelectorAll('[data-live-search]').forEach(function (input) {
+      var rowsId = input.getAttribute('data-live-search');
+      var rows = document.querySelectorAll('#' + rowsId + ' [data-search]');
+      var none = document.getElementById(rowsId + '-none');
+      var count = document.getElementById(rowsId + '-count');
+      input.addEventListener('input', function () {
+        var term = input.value.trim().toLowerCase();
+        var shown = 0;
+        rows.forEach(function (row) {
+          var match = row.getAttribute('data-search').indexOf(term) !== -1;
+          row.hidden = !match;
+          if (match) shown++;
+        });
+        if (none) none.hidden = shown > 0;
+        if (count) count.textContent = term ? shown + ' of ' + rows.length + ' shown' : rows.length + ' total';
+      });
+    });
+  })();
+</script>
