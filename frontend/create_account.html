@@ -2,206 +2,188 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Create Account - Good Driver Incentive Program</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'Create User' if admin_mode else 'Create Account' }} - Good Driver Incentive Program</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/style.css?v=12" />
 </head>
 
-<body>
-  <div class="container">
+<body class="{{ 'app-body' if admin_mode else 'auth-body' }}">
 
-    <nav>
-      <a href="/">Home</a>
-      <a href="https://team12-backend-api.duckdns.org/about">About</a>
+{% if admin_mode %}
+{% include '_app_header.html' %}
+{% else %}
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" />
+          <path d="M8.5 12l2.5 2.5 4.5-5" />
+        </svg>
+      </span>
+      <span>Good Driver <span class="brand-sub">Incentive Program</span></span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+        <a href="https://team12-backend-api.duckdns.org/about">About</a>
+        <a class="nav-cta" href="/">Log In</a>
     </nav>
+  </header>
+{% endif %}
 
-    <main>
-      {% if admin_mode %}
-        <h1>Create User Account</h1>
-      {% else %}
-        <h1>Create Driver Account</h1>
-      {% endif %}
+  <main class="auth-single">
+
+    <section class="auth-card" aria-labelledby="account-title">
 
       {% if success %}
 
-        <p style="text-align: center;">
-          Account created successfully!
-        </p>
-
-        <p style="text-align: center;">
-          <a href="/">Return to Login</a>
-        </p>
+        <div class="auth-success">
+          <span class="auth-success-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          </span>
+          {% if admin_mode %}
+            <h2 id="account-title">{{ created_role or 'User' }} account created</h2>
+            <p class="auth-card-sub">The new user can now log in with the username and password you set.</p>
+            <a class="button-link" href="/admin/accounts/new">Create another user</a>
+            <p class="auth-switch"><a href="/dashboard">Back to Admin Dashboard</a></p>
+          {% else %}
+            <h2 id="account-title">Account created</h2>
+            <p class="auth-card-sub">Your driver account is ready. Log in to apply to your sponsor and start earning points.</p>
+            <a class="button-link" href="/">Go to Log In</a>
+          {% endif %}
+        </div>
 
       {% else %}
 
-        <p style="text-align: center;">
-          Fill out the information below to create your account.
+        <h2 id="account-title">{{ 'Create a user account' if admin_mode else 'Create your driver account' }}</h2>
+        <p class="auth-card-sub">
+          {% if admin_mode %}
+            Set up a new driver, sponsor, or admin login.
+          {% else %}
+            Join your sponsor's program to start earning points for safe driving.
+          {% endif %}
         </p>
 
         {% if error %}
-          <p class="error-message">
-            {{ error }}
-          </p>
+          <p class="auth-error" role="alert">{{ error }}</p>
         {% endif %}
 
-       <form
+        <form
           action="{% if admin_mode %}/admin/accounts/new{% else %}/register{% endif %}"
           method="POST"
-          class="login-form"
+          class="auth-form"
         >
 
-          <input
-            type="hidden"
-            name="csrf_token"
-            value="{{ csrf_token() }}"
-          >
-         {% if admin_mode %}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          {% if admin_mode %}
           <div class="form-group">
-            <label for="role">Account Type:</label>
-          
+            <label for="role">Account type</label>
             <select id="role" name="role" required>
-              <option value="Driver">Driver</option>
-              <option value="Sponsor">Sponsor</option>
-              <option value="Admin">Admin</option>
+              {% for option in ('Driver', 'Sponsor', 'Admin') %}
+                <option value="{{ option }}" {% if role == option %}selected{% endif %}>{{ option }}</option>
+              {% endfor %}
             </select>
           </div>
           {% endif %}
 
-          <div class="form-group">
-            <label for="first_name">First Name:</label>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="first_name">First name</label>
+              <input type="text" id="first_name" name="first_name"
+                     value="{{ values.get('first_name', '') }}" autocomplete="given-name" required>
+            </div>
 
-            <input
-              type="text"
-              id="first_name"
-              name="first_name"
-              value="{{ values.get('first_name', '') }}"
-              required
-            >
+            <div class="form-group">
+              <label for="last_name">Last name</label>
+              <input type="text" id="last_name" name="last_name"
+                     value="{{ values.get('last_name', '') }}" autocomplete="family-name" required>
+            </div>
           </div>
 
           <div class="form-group">
-            <label for="last_name">Last Name:</label>
-
-            <input
-              type="text"
-              id="last_name"
-              name="last_name"
-              value="{{ values.get('last_name', '') }}"
-              required
-            >
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username"
+                   value="{{ values.get('username', '') }}" autocomplete="username"
+                   autocapitalize="none" spellcheck="false" required>
           </div>
 
           <div class="form-group">
-            <label for="username">Username:</label>
-
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value="{{ values.get('username', '') }}"
-              required
-            >
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email"
+                   value="{{ values.get('email', '') }}" autocomplete="email" required>
           </div>
 
           <div class="form-group">
-            <label for="email">Email:</label>
-
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value="{{ values.get('email', '') }}"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="sponsor_id">Sponsor Company:</label>
-
-            <select
-              id="sponsor_id"
-              name="sponsor_id"
-              {% if not admin_mode %}required{% endif %}
-            >
+            <label for="sponsor_id">Sponsor company</label>
+            <select id="sponsor_id" name="sponsor_id" {% if not admin_mode %}required{% endif %}>
               <option value="">Select a sponsor</option>
-
               {% for sponsor in sponsors %}
-                <option
-                  value="{{ sponsor.sponsor_id }}"
-                  {% if values.get('sponsor_id')|string == sponsor.sponsor_id|string %}
-                    selected
-                  {% endif %}
-                >
+                <option value="{{ sponsor.sponsor_id }}"
+                        {% if values.get('sponsor_id')|string == sponsor.sponsor_id|string %}selected{% endif %}>
                   {{ sponsor.sponsor_name }}
                 </option>
               {% endfor %}
-
             </select>
           </div>
 
           <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-  
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   autocomplete="new-password" aria-describedby="password-reqs" required>
+
             <ul id="password-reqs" class="password-reqs">
-              <li id="req-length" class="invalid">Minimum of 8 characters</li>
-              <li id="req-upper" class="invalid">Contain 1 uppercase letter</li>
-              <li id="req-number" class="invalid">Contain 1 number</li>
+              <li id="req-length" class="invalid">At least 8 characters</li>
+              <li id="req-upper" class="invalid">1 uppercase letter</li>
+              <li id="req-number" class="invalid">1 number</li>
             </ul>
           </div>
 
-          <script>
-            const passwordInput = document.getElementById('password');
-            const reqLength = document.getElementById('req-length');
-            const reqUpper = document.getElementById('req-upper');
-            const reqNumber = document.getElementById('req-number');
-
-            passwordInput.addEventListener('input', function() {
-              const val = passwordInput.value;
-    
-              if (val.length >= 8) {
-                reqLength.classList.replace('invalid', 'valid');
-              } else {
-                reqLength.classList.replace('valid', 'invalid');
-              }
-    
-              if (/[A-Z]/.test(val)) {
-                reqUpper.classList.replace('invalid', 'valid');
-              } else {
-                reqUpper.classList.replace('valid', 'invalid');
-              }
-    
-              if (/[0-9]/.test(val)) {
-                reqNumber.classList.replace('invalid', 'valid');
-              } else {
-                reqNumber.classList.replace('valid', 'invalid');
-              }
-            });
-          </script>
-
           <div class="form-group">
-            <label for="confirm_password">Confirm Password:</label>
-
-            <input
-              type="password"
-              id="confirm_password"
-              name="confirm_password"
-              required
-            >
+            <label for="confirm_password">Confirm password</label>
+            <input type="password" id="confirm_password" name="confirm_password"
+                   autocomplete="new-password" required>
           </div>
 
-          <button type="submit">
-            Create Account
-          </button>
-
+          <button type="submit">{{ 'Create User' if admin_mode else 'Create Account' }}</button>
         </form>
 
-        <p style="text-align: center; margin-top: 20px;">
+        <script>
+          const passwordInput = document.getElementById('password');
+          const checks = [
+            [document.getElementById('req-length'), val => val.length >= 8],
+            [document.getElementById('req-upper'), val => /[A-Z]/.test(val)],
+            [document.getElementById('req-number'), val => /[0-9]/.test(val)],
+          ];
+
+          passwordInput.addEventListener('input', function () {
+            for (const [item, passes] of checks) {
+              const ok = passes(passwordInput.value);
+              item.classList.toggle('valid', ok);
+              item.classList.toggle('invalid', !ok);
+            }
+          });
+        </script>
+
+        {% if not admin_mode %}
+        <p class="auth-switch">
           Already have an account?
-          <a href="/">Log In</a>
+          <a href="/">Log in</a>
         </p>
+        {% endif %}
 
       {% endif %}
-    </main>
-  </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>&copy; 2026 Team 12 &middot; Good Driver Incentive Program</span>
+    {% if not admin_mode %}<a href="https://team12-backend-api.duckdns.org/about">About</a>{% endif %}
+  </footer>
+
 </body>
 </html>

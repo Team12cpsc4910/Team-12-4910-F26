@@ -377,10 +377,22 @@ def can_view_catalog(driver):
     return bool(driver and driver['application_status'] == 'Approved' and driver['sponsor_id'] is not None)
 
 
+# Driver catalog sort choices: value -> (label, ORDER BY clause). Only these clauses reach SQL.
+DRIVER_CATALOG_SORTS = {
+    'name': ('Name: A to Z', 'product_name'),
+    'price_asc': ('Points: low to high', 'point_cost, product_name'),
+    'price_desc': ('Points: high to low', 'point_cost DESC, product_name'),
+}
+
+
 @rewards_bp.get('/driver/catalog')
 @login_required
 def driver_catalog():
     require_role('Driver')
+
+    sort = request.args.get('sort', 'name')
+    if sort not in DRIVER_CATALOG_SORTS:
+        sort = 'name'
 
     # Keyword search over the driver's own sponsor's catalog (product name and description)
     search = request.args.get('search', '').strip()[:MAX_CATALOG_SEARCH_LENGTH]
@@ -433,7 +445,7 @@ def driver_catalog():
                     query += " AND (product_name LIKE %s OR description LIKE %s)"
                     params += [like_pattern(search)] * 2
 
-                cur.execute(query + " ORDER BY product_name", params)
+                cur.execute(query + " ORDER BY " + DRIVER_CATALOG_SORTS[sort][1], params)
 
                 catalog = cur.fetchall()
 
@@ -447,6 +459,9 @@ def driver_catalog():
         search=search,
         selected_category=category,
         categories=categories,
+        sort=sort,
+        sort_options=DRIVER_CATALOG_SORTS,
+        in_cart=set(cart_ids()),
         max_search_length=MAX_CATALOG_SEARCH_LENGTH
 )
 
@@ -476,6 +491,11 @@ def cart_ids():
     if not isinstance(cart, dict) or cart.get('user_id') != g.user['user_id']:
         return []
     return [i for i in cart.get('items', []) if isinstance(i, int)]
+
+
+def cart_count():
+    """Number of rewards in the logged-in driver's cart, for the header's cart badge."""
+    return len(cart_ids()) if g.get('user') else 0
 
 
 def save_cart(ids):
@@ -519,6 +539,12 @@ def add_to_cart(product_id):
     else:
         save_cart(cart + [product_id])
         flash(f'{name} added to your cart.', 'success')
+
+    # The catalog grid sends where to come back to, so the driver can keep shopping.
+    # Only same-site catalog paths are followed (never another site).
+    next_page = request.form.get('next', '')
+    if next_page.startswith('/driver/catalog') and '//' not in next_page and '\\' not in next_page:
+        return redirect(next_page)
     return redirect('/driver/cart')
 
 
@@ -736,15 +762,18 @@ def render_driver_reward(product_id, template):
             if not can_view_catalog(driver):
                 return redirect('/driver/catalog')
 
+            # Same visibility rules as the catalog list, so a hidden reward can't be opened by URL
             cur.execute("""
                 SELECT product_id,
                        product_name,
                        description,
                        point_cost,
                        image_url,
+                       category,
                        availability AS available
                 FROM ProductCatalog
                 WHERE product_id = %s AND sponsor_id = %s
+                  AND catalog_enabled = TRUE AND content_rating IN ('G', 'PG')
             """, (product_id, driver['sponsor_id']))
             product = cur.fetchone()
     finally:
@@ -752,7 +781,7 @@ def render_driver_reward(product_id, template):
 
     if not product:
         abort(404)
-    return render_template(template, driver=driver, item=product)
+    return render_template(template, driver=driver, item=product, in_cart=product_id in cart_ids())
 
 # GG.deals API configuration
 
