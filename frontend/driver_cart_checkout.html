@@ -3,63 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Review cart order | Driver checkout</title>
+    <title>Review your order | Driver checkout</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/style.css?v=12">
+    <link rel="stylesheet" href="/style.css?v=17">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-<div class="container checkout">
+{% set enough_points = driver.points >= total %}
+
+<div class="page">
     <main>
-        <h1>Review your cart order</h1>
-        {% for message in get_flashed_messages() %}
-            <p role="status">{{ message }}</p>
-        {% endfor %}
 
-        {% for item in items %}
-        <section aria-label="Reward details" class="checkout-item">
-            {% if item.image_url %}<img src="{{ item.image_url }}" alt="">{% endif %}
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="/driver/catalog">Rewards Catalog</a></li>
+                <li>{{ icon('chevron-right', 14) }}<a href="/driver/cart">Cart</a></li>
+                <li aria-current="page">{{ icon('chevron-right', 14) }}<span>Review order</span></li>
+            </ol>
+        </nav>
+
+        <!-- Where the driver is in checkout -->
+        <ol class="checkout-steps" aria-label="Checkout progress">
+            <li class="done"><span class="step-dot">{{ icon('check', 14) }}</span> Cart</li>
+            <li class="current" aria-current="step"><span class="step-dot">2</span> Review</li>
+            <li><span class="step-dot">3</span> Done</li>
+        </ol>
+
+        <section class="page-heading">
             <div>
-                <h2>{{ item.product_name }}</h2>
-                <p>{{ driver.sponsor_name }} &middot; Quantity 1 &middot; {{ item.point_cost }} points</p>
+                <h1>Review your order</h1>
+                <p>Check everything below. Points are only deducted when you place the order.</p>
             </div>
         </section>
+
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="notice {{ 'notice-success' if category == 'success' else 'notice-error' }}" role="status">
+                <span>{{ message }}</span>
+            </div>
         {% endfor %}
 
         {% if skipped %}
-        <p role="status">
-            Not included because {{ 'it is' if skipped | length == 1 else 'they are' }} currently unavailable
-            (still in your cart):
-            {% for item in skipped %}{{ item.product_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-        </p>
+            <div class="notice notice-info notice-with-icon" role="status">
+                {{ icon('info', 18) }}
+                <span>
+                    Not included because {{ 'it is' if skipped | length == 1 else 'they are' }} currently unavailable
+                    (still in your cart):
+                    <strong>{% for item in skipped %}{{ item.product_name }}{% if not loop.last %}, {% endif %}{% endfor %}</strong>
+                </span>
+            </div>
         {% endif %}
 
-        <dl class="checkout-total">
-            <div><dt>Current balance</dt><dd>{{ driver.points }} points</dd></div>
-            <div><dt>Order total ({{ items | length }} reward{{ 's' if items | length != 1 }})</dt><dd>{{ total }} points</dd></div>
-            {% if driver.points >= total %}
-                <div><dt>Balance after order</dt><dd>{{ driver.points - total }} points</dd></div>
-            {% endif %}
-        </dl>
+        <div class="cart-layout">
 
-        {% if driver.points < total %}
-            <p role="status">You need {{ total - driver.points }} more points to place this order. Remove a reward from your cart or order rewards one at a time.</p>
-        {% else %}
-            <form method="POST" action="/driver/cart/checkout">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
-                <input type="hidden" name="reviewed_total" value="{{ total }}">
-                {% for item in items %}
-                    <input type="hidden" name="product_id" value="{{ item.product_id }}">
-                {% endfor %}
-                <button type="submit">Place order for {{ total }} points</button>
-            </form>
-        {% endif %}
-        <p><a href="/driver/cart">Back to cart</a></p>
+            <!-- Rewards being ordered -->
+            <section class="cart-items" aria-labelledby="order-items-title">
+                <h2 id="order-items-title" class="section-label">
+                    {{ items | length }} reward{{ 's' if items | length != 1 }} in this order
+                </h2>
+                <ul>
+                    {% for item in items %}
+                    <li class="cart-item">
+                        <span class="cart-thumb">
+                            {% if item.image_url %}
+                                <img src="{{ item.image_url }}" alt="">
+                            {% else %}
+                                <span class="product-placeholder">{{ icon('gift', 28) }}</span>
+                            {% endif %}
+                        </span>
+
+                        <div class="cart-item-body">
+                            {% if item.category %}<span class="product-category">{{ item.category }}</span>{% endif %}
+                            <h3 class="cart-item-title">{{ item.product_name }}</h3>
+                            <span class="cart-item-note">Quantity 1 &middot; Fulfilled by {{ driver.sponsor_name or 'your sponsor' }}</span>
+                        </div>
+
+                        <div class="cart-item-price">
+                            <strong>{{ '{:,}'.format(item.point_cost) }}</strong>
+                            <span>points</span>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <a href="/driver/cart" class="back-link">{{ icon('arrow-left', 16) }} Back to cart</a>
+            </section>
+
+            <!-- Totals and the final action -->
+            <aside class="panel cart-summary" aria-labelledby="summary-title">
+                <h2 id="summary-title">Order summary</h2>
+
+                <dl>
+                    <div>
+                        <dt>Rewards ({{ items | length }})</dt>
+                        <dd>{{ '{:,}'.format(total) }} pts</dd>
+                    </div>
+                    <div>
+                        <dt>Current balance</dt>
+                        <dd>{{ '{:,}'.format(driver.points) }} pts</dd>
+                    </div>
+                    <div class="summary-total">
+                        <dt>Balance after order</dt>
+                        <dd>{{ '{:,}'.format(driver.points - total) ~ ' pts' if enough_points else '—' }}</dd>
+                    </div>
+                </dl>
+
+                {% if enough_points %}
+                    <form method="POST" action="/driver/cart/checkout" class="place-order-form"
+                          onsubmit="var b = this.querySelector('button'); b.disabled = true; b.textContent = 'Placing order…';">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="redemption_key" value="{{ redemption_key() }}">
+                        <input type="hidden" name="reviewed_total" value="{{ total }}">
+                        {% for item in items %}
+                            <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                        {% endfor %}
+                        <button type="submit">Place order &middot; {{ '{:,}'.format(total) }} points</button>
+                    </form>
+                {% else %}
+                    {% set progress = driver.points * 100 // total %}
+                    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ progress }}"
+                         aria-label="Points saved toward this order">
+                        <span style="width: {{ progress }}%"></span>
+                    </div>
+                    <p class="afford no">
+                        You need {{ '{:,}'.format(total - driver.points) }} more points to place this order.
+                        Remove a reward from your cart or order rewards one at a time.
+                    </p>
+                    <a href="/driver/cart" class="button-link">{{ icon('arrow-left', 18) }} Back to cart</a>
+                {% endif %}
+
+                <ul class="detail-notes">
+                    <li>{{ icon('shield', 16) }} Points are deducted as soon as you place the order. Everything is ordered together, or nothing is.</li>
+                    <li>{{ icon('package', 16) }} Track your rewards under My Reward Orders on your dashboard.</li>
+                </ul>
+            </aside>
+
+        </div>
+
     </main>
 </div>
 </body>

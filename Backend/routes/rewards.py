@@ -700,6 +700,7 @@ def driver_cart_checkout():
                            product_name,
                            point_cost,
                            image_url,
+                           category,
                            availability AS available
                     FROM ProductCatalog
                     WHERE sponsor_id = %s AND product_id IN ({placeholders})
