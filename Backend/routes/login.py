@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash
 from database import get_db_connection
 from security import login_required, check_csrf
 from routes.rewards import get_sponsor_catalog, require_role, CatalogValidationError
-from routes.admin import change_own_password, AdminError, csv_safe
+from routes.admin import change_own_password, AdminError, csv_safe, get_admin_overview
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -153,7 +153,7 @@ def dashboard():
     user_type = session.get('user_type')
 
     if user_type == "Admin":
-        return render_template('admin_dashboard.html')
+        return render_template('admin_dashboard.html', overview=get_admin_overview())
 
     elif user_type == "Sponsor":
         catalog_filters = {key: request.args.get(key, '') for key in

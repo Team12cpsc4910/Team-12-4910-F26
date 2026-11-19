@@ -4,31 +4,83 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>About - Good Driver Incentive Program</title>
-  <link rel="stylesheet" href="/style.css?v=5" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/style.css?v=27" />
 </head>
-<body>
-  <div class="container">
-    <nav>
-      <a href="https://main.d13wzj1s6istn6.amplifyapp.com/">Home</a>
-      <a href="https://main.d13wzj1s6istn6.amplifyapp.com/about.html">About</a>
+<body class="auth-body">
+
+  <!-- Static page (served by Amplify too), so no Jinja: everything here is plain HTML + JS -->
+  <header class="site-header">
+    <a class="brand" href="https://main.d13wzj1s6istn6.amplifyapp.com/">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" />
+          <path d="M8.5 12l2.5 2.5 4.5-5" />
+        </svg>
+      </span>
+      <span>Good Driver <span class="brand-sub">Incentive Program</span></span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="https://main.d13wzj1s6istn6.amplifyapp.com/about.html" aria-current="page">About</a>
+      <a class="nav-cta" href="https://main.d13wzj1s6istn6.amplifyapp.com/">Log In</a>
     </nav>
-    <main>
-      <h1>About</h1>
-      <dl class="about-info">
-        <dt>Product Name</dt>
-        <dd id="product_name">Good Driver Incentive Program</dd>
-        <dt>Product Description</dt>
-        <dd id="product_description">Drivers can earn points and redeem sponsor rewards.</dd>
-        <dt>Team #</dt>
-        <dd id="team_number">12</dd>
-        <dt>Version # (Sprint #)</dt>
-        <dd id="version_number">Not available</dd>
-        <dt>Release Date</dt>
-        <dd id="release_date">Not available</dd>
-      </dl>
-      <p id="about-status" role="status" aria-live="polite"></p>
-    </main>
-  </div>
+  </header>
+
+  <main class="about-layout">
+
+    <section class="about-hero">
+      <p class="eyebrow">About the project</p>
+      <h1 id="product_name">Good Driver Incentive Program</h1>
+      <p class="lead" id="product_description">Drivers can earn points and redeem sponsor rewards.</p>
+    </section>
+
+    <section class="about-facts" aria-label="Release information">
+      <div class="about-fact">
+        <span class="about-fact-label">Team</span>
+        <strong>#<span id="team_number">12</span></strong>
+      </div>
+      <div class="about-fact">
+        <span class="about-fact-label">Version (Sprint)</span>
+        <strong id="version_number">Not available</strong>
+      </div>
+      <div class="about-fact">
+        <span class="about-fact-label">Release date</span>
+        <strong id="release_date">Not available</strong>
+      </div>
+    </section>
+
+    <p id="about-status" class="about-status" role="status" aria-live="polite"></p>
+
+    <section class="about-how" aria-labelledby="how-title">
+      <h2 id="how-title">How it works</h2>
+      <ol class="about-steps">
+        <li>
+          <span class="about-step-number">1</span>
+          <strong>Drivers join a sponsor</strong>
+          <p>Drivers apply to a sponsor company's incentive program.</p>
+        </li>
+        <li>
+          <span class="about-step-number">2</span>
+          <strong>Sponsors award points</strong>
+          <p>Sponsors add points for good driving and record the reason.</p>
+        </li>
+        <li>
+          <span class="about-step-number">3</span>
+          <strong>Drivers redeem rewards</strong>
+          <p>Drivers spend points on rewards from their sponsor's catalog.</p>
+        </li>
+      </ol>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <span>&copy; 2026 Team 12 &middot; Good Driver Incentive Program</span>
+    <a href="https://main.d13wzj1s6istn6.amplifyapp.com/">Log In</a>
+  </footer>
+
   <script>
     // This page is deployed as static HTML on Amplify, so Jinja cannot run here.
     // Ask the Flask backend for AboutPage values; keep the fallback if unavailable.
@@ -59,4 +111,3 @@
   </script>
 </body>
 </html>
-

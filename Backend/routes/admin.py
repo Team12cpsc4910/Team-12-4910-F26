@@ -319,6 +319,31 @@ def get_drivers():
             conn.close()
     return drivers
 
+
+# Admin dashboard summary: a few system-wide counts. Read-only; returns None if the
+# database can't be reached so the dashboard still loads.
+def get_admin_overview():
+    conn = None
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    (SELECT COUNT(*) FROM DriverUser) AS drivers,
+                    (SELECT COUNT(*) FROM DriverUser WHERE application_status = 'Approved') AS active_drivers,
+                    (SELECT COUNT(*) FROM Sponsor) AS sponsors,
+                    (SELECT COUNT(*) FROM DriverApp WHERE LOWER(state) = 'pending') AS pending_applications,
+                    (SELECT COUNT(*) FROM RewardRedemption WHERE status = 'Requested') AS open_orders,
+                    (SELECT COUNT(*) FROM UserAccount WHERE account_locked = TRUE) AS locked_accounts
+            """)
+            return cur.fetchone()
+    except Exception as e:
+        print(f"Database error: {e}")
+        return None
+    finally:
+        if conn and conn.open:
+            conn.close()
+
 @admin_bp.route('/admin/sponsor-users')
 @login_required
 def admin_sponsor_users():

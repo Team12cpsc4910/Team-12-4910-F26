@@ -7,17 +7,110 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/style.css?v=12">
+  <link rel="stylesheet" href="/style.css?v=27">
 </head>
 <body class="app-body">
 
 {% include '_app_header.html' %}
+{% from '_icons.html' import icon %}
 
-  <div class="container">
-    <main>
-      <h1 style="text-align: center;">Admin Dashboard</h1>
-      <p style="text-align: center;">Welcome, Admin. System settings and user management will appear here.</p>
-    </main>
-  </div>
+{% macro count(key) -%}{{ '{:,}'.format(overview[key] or 0) if overview else '—' }}{%- endmacro %}
+
+<div class="page">
+  <main>
+
+    <section class="page-heading">
+      <div>
+        <h1>Admin dashboard</h1>
+        <p>Manage every account in the Good Driver Incentive Program and review system activity.</p>
+      </div>
+      <a href="/admin/accounts/new" class="button-link button-inline">{{ icon('user-plus', 18) }} Create user</a>
+    </section>
+
+    {% if not overview %}
+      <div class="notice notice-warning notice-with-icon" role="status">
+        {{ icon('info', 18) }}<span>System totals are unavailable right now. Everything below still works.</span>
+      </div>
+    {% endif %}
+
+    <!-- System at a glance -->
+    <section class="stat-grid" aria-label="System summary">
+      <a class="stat-card stat-card-primary" href="/admin/drivers">
+        <span class="stat-icon">{{ icon('users', 22) }}</span>
+        <span class="stat-label">Drivers</span>
+        <strong class="stat-value">{{ count('drivers') }}</strong>
+        <span class="stat-link">{{ count('active_drivers') }} active in a program</span>
+      </a>
+      <a class="stat-card" href="/admin/sponsor-users">
+        <span class="stat-icon">{{ icon('building', 22) }}</span>
+        <span class="stat-label">Sponsor companies</span>
+        <strong class="stat-value">{{ count('sponsors') }}</strong>
+        <span class="stat-link">View sponsor users {{ icon('arrow-right', 16) }}</span>
+      </a>
+      <a class="stat-card{{ ' stat-card-warning' if overview and overview.pending_applications }}" href="/admin/application-log">
+        <span class="stat-icon">{{ icon('file', 22) }}</span>
+        <span class="stat-label">Pending applications</span>
+        <strong class="stat-value">{{ count('pending_applications') }}</strong>
+        <span class="stat-link">Application log {{ icon('arrow-right', 16) }}</span>
+      </a>
+      <div class="stat-card{{ ' stat-card-warning' if overview and overview.locked_accounts }}">
+        <span class="stat-icon">{{ icon('lock', 22) }}</span>
+        <span class="stat-label">Locked accounts</span>
+        <strong class="stat-value">{{ count('locked_accounts') }}</strong>
+        <span class="stat-link">{{ count('open_orders') }} reward orders open</span>
+      </div>
+    </section>
+
+    <!-- Where to go -->
+    <section class="dash-section" aria-labelledby="tools-title">
+      <h2 id="tools-title" class="section-label">Admin tools</h2>
+      <ul class="tool-grid">
+        <li>
+          <a href="/admin/drivers">
+            <span class="app-icon is-approved">{{ icon('users', 22) }}</span>
+            <strong>Drivers</strong>
+            <small>View every driver, view as a driver, and reset passwords.</small>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/sponsor-users">
+            <span class="app-icon is-approved">{{ icon('building', 22) }}</span>
+            <strong>Sponsor users</strong>
+            <small>Look up and edit sponsor logins for every company.</small>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/admin-users">
+            <span class="app-icon is-approved">{{ icon('shield', 22) }}</span>
+            <strong>Admin users</strong>
+            <small>See and edit the other administrators.</small>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/accounts/new">
+            <span class="app-icon">{{ icon('user-plus', 22) }}</span>
+            <strong>Create user</strong>
+            <small>Add a driver, sponsor, or admin account.</small>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/reports">
+            <span class="app-icon">{{ icon('chart', 22) }}</span>
+            <strong>Reports</strong>
+            <small>Sales by sponsor and driver, plus point reports.</small>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/application-log">
+            <span class="app-icon">{{ icon('list', 22) }}</span>
+            <strong>Application log</strong>
+            <small>Every driver application and decision.</small>
+          </a>
+        </li>
+      </ul>
+    </section>
+
+  </main>
+</div>
 </body>
 </html>
